@@ -21,7 +21,7 @@
       <div class="sb-item  " onclick="location.href='search.html'"><span class="ni">🔍</span> 기능 검색</div>
       <div class="sb-item  edit-only" onclick="location.href='edit.html'"><span class="ni">✏️</span> 등록·수정</div>
       <div class="sb-item  " onclick="location.href='assignee.html'"><span class="ni">👤</span> 나의 현황</div>
-      <div class="sb-item active" id="admin-menu-item" style="display:none;" onclick="location.href='admin.html'"><span class="ni">🛡️</span> 관리자 메뉴</div>
+      <div class="sb-item active" id="admin-menu-item" style="display:flex;visibility:hidden;" onclick="location.href='admin.html'"><span class="ni">🛡️</span> 관리자 메뉴</div>
     </div>
   </nav>
   <div id="main">
@@ -351,27 +351,22 @@ let activeSolCol = null;
 function doLogin() { initUI(); }
 
 function doLogout() {
-  // 로그인 없음 — 새로고침으로 초기화
-  location.reload();
+  // Firebase doLogout은 DOMContentLoaded 이후 _auth 초기화 후 덮어씌움
+  console.log('doLogout 호출 (Firebase 초기화 대기 중)');
 }
 
 function initUI() {
-  loadFromStorage();
-  if(!currentUser) currentUser = {id:'guest', name:'커머스 코칭팀', role:'admin'};
+  if(!currentUser) return;
   ASSIGNEES = getAssignees();
-  const unEl = document.getElementById('sb-username');
-  const urEl = document.getElementById('sb-userrole');
   const adminMenu = document.getElementById('admin-menu-item');
-  if(unEl) unEl.textContent = currentUser.name;
-  if(urEl) urEl.textContent = ROLE_LABEL[currentUser.role] || '일반';
-  if(adminMenu) adminMenu.style.display = canAdmin() ? 'flex' : 'none';
-  populateCatFilter();
-  // 권한별 UI 제어
+  // 관리자 메뉴: visibility로 레이아웃 유지하며 표시/숨김 (깜빡임 방지)
+  if(adminMenu) {
+    adminMenu.style.visibility = canAdmin() ? 'visible' : 'hidden';
+    adminMenu.style.display = 'flex';
+  }
   document.querySelectorAll('.edit-only').forEach(el=>{
     el.style.display = canEdit() ? '' : 'none';
   });
-  renderDashboard();
-  gv('dashboard');
 }
 
 function addLoginLog(id, name) {
@@ -1946,6 +1941,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     const _ls = document.getElementById('login-screen');
     if(_ls) _ls.style.display = 'flex';
   }
+
+  // doLogout을 Firebase signOut으로 재정의
+  window.doLogout = function() {
+    localStorage.removeItem('_fb_user');
+    _auth.signOut().then(() => {
+      window.location.href = 'index.html';
+    }).catch(err => console.error('로그아웃 오류:', err));
+  };
 
   _auth.onAuthStateChanged(user=>{
     if(user&&user.email.endsWith('@in.cd24.kr')){onLoginSuccess(user);}
