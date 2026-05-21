@@ -245,7 +245,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(135deg,#0a1628 0%,#0d2247 50%,#0a1628 100%);display:flex;align-items:center;justify-content:center;z-index:9999;">
+<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(135deg,#0a1628 0%,#0d2247 50%,#0a1628 100%);display:none;align-items:center;justify-content:center;z-index:9999;">
   <div style="background:#fff;border-radius:16px;padding:40px 36px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
     <div style="font-size:36px;margin-bottom:8px;">📊</div>
     <div style="font-size:18px;font-weight:800;color:#0F172A;margin-bottom:4px;">솔루션 비교 허브</div>
@@ -1880,6 +1880,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const isAdmin=email==='ecmsshseo@in.cd24.kr';
     currentUser={id:email.split('@')[0],name:user.displayName||email,role:isAdmin?'admin':'editor'};
     document.getElementById('login-screen').style.display='none';
+    localStorage.setItem('_fb_user', JSON.stringify({email:user.email, name:user.displayName||user.email}));
     const un=document.getElementById('sb-username');if(un)un.textContent=user.displayName||email;
     const ur=document.getElementById('sb-userrole');if(ur)ur.textContent=isAdmin?'관리자':'담당자';
     loadFromStorage();initUI();renderSearchView();const q=new URLSearchParams(window.location.search).get('q');if(q){const i=document.getElementById('srch-main');if(i){i.value=q;doSearch(q);}}
@@ -1888,6 +1889,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('google-login-btn').addEventListener('click',function(){
     _auth.signInWithPopup(_provider).then(r=>onLoginSuccess(r.user)).catch(err=>{console.error(err);document.getElementById('login-err').textContent='오류: '+err.code;});
   });
+
+  // localStorage에 로그인 정보 있으면 즉시 로그인 화면 숨김 (깜빡임 방지)
+  const _cachedUser = localStorage.getItem('_fb_user');
+  if(_cachedUser) {
+    const _ls = document.getElementById('login-screen');
+    if(_ls) _ls.style.display = 'none';
+  } else {
+    const _ls = document.getElementById('login-screen');
+    if(_ls) _ls.style.display = 'flex';
+  }
 
   _auth.onAuthStateChanged(user=>{
     if(user&&user.email.endsWith('@in.cd24.kr')){onLoginSuccess(user);}

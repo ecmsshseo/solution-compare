@@ -39,37 +39,42 @@
           <button class="btn btn-p btn-sm edit-only" onclick="openModal('trend-modal')">+ 동향 추가</button>
         </div>
 
-        <!-- 소스 타입 필터 -->
-        <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center;">
-          <span class="flbl">구분:</span>
-          <span class="fchip active" onclick="filterTrendSource(this,'all')" id="tsrc-all"
-            style="background:var(--primary);color:#fff;border-color:var(--primary);">전체</span>
-          <span class="fchip" onclick="filterTrendSource(this,'official')" id="tsrc-official"
-            style="border-color:#0F6FFF;color:#0F6FFF;">
-            📢 공식 공지</span>
-          <span class="fchip" onclick="filterTrendSource(this,'news')" id="tsrc-news"
-            style="border-color:#8B5CF6;color:#8B5CF6;">
-            📰 뉴스</span>
-          <span class="fchip" onclick="filterTrendSource(this,'internal')" id="tsrc-internal"
-            style="border-color:#F59E0B;color:#F59E0B;">
-            📋 내부 등록</span>
-        </div>
-        <div class="filter-bar">
-          <span class="flbl">솔루션:</span>
-          <span class="fchip active" onclick="filterTrendSol(this,'all')">전체</span>
-          <span class="fchip" onclick="filterTrendSol(this,'카페24')">카페24</span>
-          <span class="fchip" onclick="filterTrendSol(this,'메이크샵')">메이크샵</span>
-          <span class="fchip" onclick="filterTrendSol(this,'고도몰')">고도몰</span>
-          <span class="fchip" onclick="filterTrendSol(this,'아임웹')">아임웹</span>
-          <span class="fchip" onclick="filterTrendSol(this,'식스샵')">식스샵</span>
-          <span class="fchip" onclick="filterTrendSol(this,'플렉스지')">플렉스지</span>
-          <span class="fchip" onclick="filterTrendSol(this,'쇼피파이')">쇼피파이</span>
-          <span class="flbl" style="margin-left:8px;">유형:</span>
-          <span class="fchip active" onclick="filterTrendType(this,'all')">전체</span>
-          <span class="fchip" onclick="filterTrendType(this,'기능출시')">기능출시</span>
-          <span class="fchip" onclick="filterTrendType(this,'기능개선')">기능개선</span>
-          <span class="fchip" onclick="filterTrendType(this,'요금변경')">요금변경</span>
-          <span class="fchip" onclick="filterTrendType(this,'서비스종료')">서비스종료</span>
+        <!-- 필터 영역 -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="flbl" style="min-width:44px;">구분</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="fchip active" id="tsrc-all" onclick="filterTrendSource(this,'all')">전체</span>
+              <span class="fchip" id="tsrc-official" onclick="filterTrendSource(this,'official')">공식 공지</span>
+              <span class="fchip" id="tsrc-news" onclick="filterTrendSource(this,'news')">뉴스</span>
+              <span class="fchip" id="tsrc-internal" onclick="filterTrendSource(this,'internal')">내부 등록</span>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="flbl" style="min-width:44px;">솔루션</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="fchip active" onclick="filterTrendSol(this,'all')">전체</span>
+              <span class="fchip" onclick="filterTrendSol(this,'카페24')">카페24</span>
+              <span class="fchip" onclick="filterTrendSol(this,'메이크샵')">메이크샵</span>
+              <span class="fchip" onclick="filterTrendSol(this,'고도몰')">고도몰</span>
+              <span class="fchip" onclick="filterTrendSol(this,'아임웹')">아임웹</span>
+              <span class="fchip" onclick="filterTrendSol(this,'식스샵')">식스샵</span>
+              <span class="fchip" onclick="filterTrendSol(this,'플렉스지')">플렉스지</span>
+              <span class="fchip" onclick="filterTrendSol(this,'쇼피파이')">쇼피파이</span>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="flbl" style="min-width:44px;">유형</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="fchip active" onclick="filterTrendType(this,'all')">전체</span>
+              <span class="fchip" onclick="filterTrendType(this,'기능출시')">기능출시</span>
+              <span class="fchip" onclick="filterTrendType(this,'기능개선')">기능개선</span>
+              <span class="fchip" onclick="filterTrendType(this,'요금변경')">요금변경</span>
+              <span class="fchip" onclick="filterTrendType(this,'서비스종료')">서비스종료</span>
+            </div>
+          </div>
         </div>
         <div class="trend-grid">
           <div class="card">
@@ -277,7 +282,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(135deg,#0a1628 0%,#0d2247 50%,#0a1628 100%);display:flex;align-items:center;justify-content:center;z-index:9999;">
+<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(135deg,#0a1628 0%,#0d2247 50%,#0a1628 100%);display:none;align-items:center;justify-content:center;z-index:9999;">
   <div style="background:#fff;border-radius:16px;padding:40px 36px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
     <div style="font-size:36px;margin-bottom:8px;">📊</div>
     <div style="font-size:18px;font-weight:800;color:#0F172A;margin-bottom:4px;">솔루션 비교 허브</div>
@@ -1052,7 +1057,7 @@ function renderTrendSummary() {
   }).join('');
 }
 function filterTrendSol(el,sol) {
-  document.querySelectorAll('#view-trend .fchip').forEach(c=>{if(c.closest('.filter-bar').children[1]===c||c.textContent==='전체'||SOLUTIONS.some(s=>c.textContent===s))c.classList.remove('active');});
+  // fchip active 리셋은 각 필터 함수에서 처리
   el.classList.add('active');
   trendSolFilter=sol; renderTrendList();
 }
@@ -1912,6 +1917,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const isAdmin=email==='ecmsshseo@in.cd24.kr';
     currentUser={id:email.split('@')[0],name:user.displayName||email,role:isAdmin?'admin':'editor'};
     document.getElementById('login-screen').style.display='none';
+    localStorage.setItem('_fb_user', JSON.stringify({email:user.email, name:user.displayName||user.email}));
     const un=document.getElementById('sb-username');if(un)un.textContent=user.displayName||email;
     const ur=document.getElementById('sb-userrole');if(ur)ur.textContent=isAdmin?'관리자':'담당자';
     loadFromStorage();initUI();renderTrend();
@@ -1920,6 +1926,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('google-login-btn').addEventListener('click',function(){
     _auth.signInWithPopup(_provider).then(r=>onLoginSuccess(r.user)).catch(err=>{console.error(err);document.getElementById('login-err').textContent='오류: '+err.code;});
   });
+
+  // localStorage에 로그인 정보 있으면 즉시 로그인 화면 숨김 (깜빡임 방지)
+  const _cachedUser = localStorage.getItem('_fb_user');
+  if(_cachedUser) {
+    const _ls = document.getElementById('login-screen');
+    if(_ls) _ls.style.display = 'none';
+  } else {
+    const _ls = document.getElementById('login-screen');
+    if(_ls) _ls.style.display = 'flex';
+  }
 
   _auth.onAuthStateChanged(user=>{
     if(user&&user.email.endsWith('@in.cd24.kr')){onLoginSuccess(user);}
