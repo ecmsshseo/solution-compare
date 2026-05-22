@@ -47,7 +47,7 @@ body{margin:0;padding:0;display:flex;}
     </div>
     <button class="btn btn-o btn-sm" onclick="frameLogout()" style="flex-shrink:0;margin-left:6px;">로그아웃</button>
   </div>
-  <iframe id="main-frame" src="index.html"></iframe>
+  <iframe id="main-frame" src="dashboard.html"></iframe>
 </div>
 
 <!-- 로그인 화면 -->
@@ -77,7 +77,8 @@ function setActive(page) {
 
 function navTo(page) {
   const frame=document.getElementById('main-frame');
-  if(frame) frame.src=page+'.html';
+  const fileMap={index:'dashboard',trend:'trend',compare:'compare',search:'search',edit:'edit',assignee:'assignee',admin:'admin'};
+  if(frame) frame.src=(fileMap[page]||page)+'.html';
   setActive(page);
 }
 
