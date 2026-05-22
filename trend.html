@@ -8,38 +8,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <link rel="stylesheet" href="style.css">
+<style>
+body{margin:0;padding:0;background:var(--bg);}
+#page-content{padding:18px 20px;}
+</style>
 </head>
 <body>
-<div id="app">
-  <nav id="sidebar">
-    <div class="sb-logo"><div class="ico">📊</div><div><div class="txt">솔루션 비교 허브</div><div class="sub">SIIC 부천센터</div></div></div>
-    <div class="sb-user" style="margin:10px 10px 0;"><div class="uname" id="sb-username">로그인 중...</div><div class="urole" id="sb-userrole"></div></div>
-    <div class="sb-sec"><div class="sb-sec-lbl">메뉴</div>
-      <div class="sb-item  " onclick="location.href='index.html'"><span class="ni">🏠</span> 대시보드</div>
-      <div class="sb-item active " onclick="location.href='trend.html'"><span class="ni">📰</span> 솔루션 동향</div>
-      <div class="sb-item  " onclick="location.href='compare.html'"><span class="ni">⚖️</span> 기능 비교표</div>
-      <div class="sb-item  " onclick="location.href='search.html'"><span class="ni">🔍</span> 기능 검색</div>
-      <div class="sb-item  edit-only" onclick="location.href='edit.html'"><span class="ni">✏️</span> 등록·수정</div>
-      <div class="sb-item  " onclick="location.href='assignee.html'"><span class="ni">👤</span> 나의 현황</div>
-      <div class="sb-item " id="admin-menu-item" style="display:flex;opacity:0;pointer-events:none;" onclick="location.href='admin.html'"><span class="ni">🛡️</span> 관리자 메뉴</div>
-    </div>
-  </nav>
-  <div id="main">
-    <div id="topbar">
-      <div class="tb-title">솔루션 동향</div>
-      <div style="flex:1;"></div>
-      <div class="search-wrap" style="max-width:360px;flex-shrink:0;"><span style="color:var(--tx3);">🔍</span><input type="text" id="global-search" placeholder="기능 검색..." onkeydown="if(event.key==='Enter'&&this.value)window.location.href='search.html?q='+encodeURIComponent(this.value)"></div>
-      <button class="btn btn-o btn-sm" onclick="exportData()">내보내기</button>
-      <button class="btn btn-o btn-sm" onclick="doLogout()" style="margin-left:4px;">로그아웃</button>
-    </div>
-    <div id="content">
+<div id="page-content">
 <!-- ===== TREND ===== -->
       <div id="view-trend" class="view active">
         <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
           <button class="btn btn-p btn-sm edit-only" onclick="openModal('trend-modal')">+ 동향 추가</button>
         </div>
 
-        <!-- 필터 영역 -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span class="flbl" style="min-width:44px;">구분</span>
@@ -92,8 +73,6 @@
 
       <!-- ===== ASSIGNEE ===== -->
 
-    </div>
-  </div>
 </div>
 <!-- DETAIL PANEL -->
 <div class="dpanel" id="dpanel">
@@ -341,23 +320,27 @@ let activeSolCol = null;
 function doLogin() { initUI(); }
 
 function doLogout() {
-  // Firebase doLogout은 DOMContentLoaded 이후 _auth 초기화 후 덮어씌움
-  console.log('doLogout 호출 (Firebase 초기화 대기 중)');
+  // 로그인 없음 — 새로고침으로 초기화
+  location.reload();
 }
 
 function initUI() {
-  if(!currentUser) return;
+  loadFromStorage();
+  if(!currentUser) currentUser = {id:'guest', name:'커머스 코칭팀', role:'admin'};
   ASSIGNEES = getAssignees();
+  const unEl = document.getElementById('sb-username');
+  const urEl = document.getElementById('sb-userrole');
   const adminMenu = document.getElementById('admin-menu-item');
-  // 관리자 메뉴: visibility로 레이아웃 유지하며 표시/숨김 (깜빡임 방지)
-  if(adminMenu) {
-    adminMenu.style.opacity = canAdmin() ? '1' : '0';
-    adminMenu.style.pointerEvents = canAdmin() ? 'auto' : 'none';
-    adminMenu.style.display = 'flex';
-  }
+  if(unEl) unEl.textContent = currentUser.name;
+  if(urEl) urEl.textContent = ROLE_LABEL[currentUser.role] || '일반';
+  if(adminMenu) adminMenu.style.display = canAdmin() ? 'flex' : 'none';
+  populateCatFilter();
+  // 권한별 UI 제어
   document.querySelectorAll('.edit-only').forEach(el=>{
     el.style.display = canEdit() ? '' : 'none';
   });
+  renderDashboard();
+  gv('dashboard');
 }
 
 function addLoginLog(id, name) {
@@ -1053,7 +1036,7 @@ function renderTrendSummary() {
   }).join('');
 }
 function filterTrendSol(el,sol) {
-  // fchip active 리셋은 각 필터 함수에서 처리
+  document.querySelectorAll('#view-trend .fchip').forEach(c=>{if(c.closest('.filter-bar').children[1]===c||c.textContent==='전체'||SOLUTIONS.some(s=>c.textContent===s))c.classList.remove('active');});
   el.classList.add('active');
   trendSolFilter=sol; renderTrendList();
 }
@@ -1893,8 +1876,10 @@ function toast(msg) {
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.modal-ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
   document.addEventListener('click',e=>{const dp=document.getElementById('dpanel');if(dp&&dp.classList.contains('open')&&!dp.contains(e.target)&&!e.target.closest('.ctbl tr')&&!e.target.closest('.sr-item'))closeDetail();});
+  // 로그인 캐시 확인
+  const cached=localStorage.getItem('_fb_user');
+  if(!cached){const ls=document.getElementById('login-screen');if(ls)ls.style.display='flex';}
 
-  // Firebase 초기화
   firebase.initializeApp({
     apiKey:"AIzaSyClykJM1ySRaboArlRaLiEQyvVjYAepS_Q",
     authDomain:"cafe24-sol-compare.firebaseapp.com",
@@ -1909,42 +1894,38 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   function onLoginSuccess(user){
     const email=user.email;
-    if(!email.endsWith('@in.cd24.kr')){_auth.signOut();document.getElementById('login-err').textContent='@in.cd24.kr 계정만 접속 가능합니다.';return;}
+    if(!email.endsWith('@in.cd24.kr')){_auth.signOut();return;}
     const isAdmin=email==='ecmsshseo@in.cd24.kr';
     currentUser={id:email.split('@')[0],name:user.displayName||email,role:isAdmin?'admin':'editor'};
-    document.getElementById('login-screen').style.display='none';
-    localStorage.setItem('_fb_user', JSON.stringify({email:user.email, name:user.displayName||user.email}));
-    const un=document.getElementById('sb-username');if(un)un.textContent=user.displayName||email;
-    const ur=document.getElementById('sb-userrole');if(ur)ur.textContent=isAdmin?'관리자':'담당자';
+    localStorage.setItem('_fb_user',JSON.stringify({email,name:user.displayName||email}));
+    // 부모 프레임(shell)에 로그인 성공 알림
+    if(window.parent&&window.parent!==window){
+      window.parent.onFrameLogin(currentUser);
+    }
+    addLoginLog(currentUser.id,currentUser.name);
+    saveToStorage();
     loadFromStorage();initUI();renderTrend();
   }
 
   document.getElementById('google-login-btn').addEventListener('click',function(){
-    _auth.signInWithPopup(_provider).then(r=>onLoginSuccess(r.user)).catch(err=>{console.error(err);document.getElementById('login-err').textContent='오류: '+err.code;});
+    _auth.signInWithPopup(_provider).then(r=>onLoginSuccess(r.user)).catch(err=>{
+      console.error(err);
+      document.getElementById('login-err').textContent='오류: '+err.code;
+    });
   });
-
-  // localStorage에 로그인 정보 있으면 즉시 로그인 화면 숨김 (깜빡임 방지)
-  const _cachedUser = localStorage.getItem('_fb_user');
-  if(_cachedUser) {
-    const _ls = document.getElementById('login-screen');
-    if(_ls) _ls.style.display = 'none';
-  } else {
-    const _ls = document.getElementById('login-screen');
-    if(_ls) _ls.style.display = 'flex';
-  }
-
-  // doLogout을 Firebase signOut으로 재정의
-  window.doLogout = function() {
-    localStorage.removeItem('_fb_user');
-    _auth.signOut().then(() => {
-      window.location.href = 'index.html';
-    }).catch(err => console.error('로그아웃 오류:', err));
-  };
 
   _auth.onAuthStateChanged(user=>{
     if(user&&user.email.endsWith('@in.cd24.kr')){onLoginSuccess(user);}
     else if(user){_auth.signOut();}
   });
+
+  window.doLogout=function(){
+    localStorage.removeItem('_fb_user');
+    _auth.signOut().then(()=>{
+      if(window.parent&&window.parent!==window) window.parent.onFrameLogout();
+      else location.reload();
+    });
+  };
 
 });
 </script>
