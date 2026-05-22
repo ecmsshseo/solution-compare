@@ -21,7 +21,7 @@
       <div class="sb-item  " onclick="location.href='search.html'"><span class="ni">🔍</span> 기능 검색</div>
       <div class="sb-item  edit-only" onclick="location.href='edit.html'"><span class="ni">✏️</span> 등록·수정</div>
       <div class="sb-item  " onclick="location.href='assignee.html'"><span class="ni">👤</span> 나의 현황</div>
-      <div class="sb-item " id="admin-menu-item" style="display:flex;visibility:hidden;" onclick="location.href='admin.html'"><span class="ni">🛡️</span> 관리자 메뉴</div>
+      <div class="sb-item " id="admin-menu-item" style="display:flex;opacity:0;pointer-events:none;" onclick="location.href='admin.html'"><span class="ni">🛡️</span> 관리자 메뉴</div>
     </div>
   </nav>
   <div id="main">
@@ -387,7 +387,8 @@ function initUI() {
   const adminMenu = document.getElementById('admin-menu-item');
   // 관리자 메뉴: visibility로 레이아웃 유지하며 표시/숨김 (깜빡임 방지)
   if(adminMenu) {
-    adminMenu.style.visibility = canAdmin() ? 'visible' : 'hidden';
+    adminMenu.style.opacity = canAdmin() ? '1' : '0';
+    adminMenu.style.pointerEvents = canAdmin() ? 'auto' : 'none';
     adminMenu.style.display = 'flex';
   }
   document.querySelectorAll('.edit-only').forEach(el=>{
