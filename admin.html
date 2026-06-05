@@ -101,7 +101,7 @@ body{margin:0;padding:0;background:var(--bg);}
       <div id="dp-detail" style="font-size:12px;color:var(--tx2);line-height:1.7;background:#F8FAFC;border-radius:7px;padding:10px 12px;white-space:pre-wrap;"></div>
     </div>
     <div class="ds-section"><div class="ds-lbl">솔루션별 지원 현황</div><div class="sol-st-grid" id="dp-sol-grid"></div></div>
-    <div class="ds-section"><div class="ds-lbl">담당 · 메모</div><div id="dp-meta"></div></div>
+    <div class="ds-section" id="dp-meta-section"><div class="ds-lbl">메모</div><div id="dp-meta"></div></div>
     <div class="ds-section" id="dp-links-section" style="display:none;"><div class="ds-lbl">관련 링크</div><div id="dp-links"></div></div>
     <div class="ds-section"><div class="ds-lbl">관련 동향</div><div id="dp-trends" style="font-size:11.5px;color:var(--tx2);"></div></div>
     <button class="btn btn-o edit-only" style="width:100%;margin-top:4px;" onclick="editFromDetail()">이 기능 편집</button>
@@ -142,14 +142,6 @@ body{margin:0;padding:0;background:var(--bg);}
               <option value="김세림">김세림</option>
               <option value="박선하">박선하</option>
             </select>
-          </div>
-          <div class="fr" style="margin-bottom:0;"><label class="fl">태그</label>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
-              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-app"> 앱/연동</label>
-              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-ai"> AI</label>
-              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-prem"> 유료</label>
-              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-beta"> 베타</label>
-            </div>
           </div>
         </div>
       </div>
@@ -1566,8 +1558,8 @@ function renderSolAssignGrid() {
         ${ASSIGNEES.map(a=>`
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;">
             <input type="checkbox" id="sa-${s}-${a.name}" ${cur.includes(a.name)?'checked':''}
-              style="accent-color:${a.color};width:14px;height:14px;">
-            <span style="font-weight:${cur.includes(a.name)?700:400};color:${cur.includes(a.name)?a.color:'var(--tx2)'};">${a.name}</span>
+              style="accent-color:var(--primary);width:14px;height:14px;">
+            <span style="font-weight:400;color:var(--tx2);">${a.name}</span>
           </label>`).join('')}
       </div>
     </div>`;
@@ -1665,14 +1657,18 @@ function openDetail(id) {
       <div class="sol-st-nm" style="color:${SOL_COLOR[s]}">${s}</div>
       <div class="sol-st-val">${label}</div>
       ${sn?`<div class="sol-st-note" style="margin-top:4px;font-size:10.5px;color:var(--tx2);background:#F8FAFC;border-radius:4px;padding:3px 6px;">${sn}</div>`:''}
-      ${sg?`<a href="${sg}" target="_blank" style="display:inline-flex;margin-top:5px;font-size:10.5px;font-weight:700;color:var(--primary);text-decoration:none;">관련 가이드 보기 →</a>`:''}
+      ${sg?`<a href="${sg}" target="_blank" style="display:inline-flex;margin-top:5px;font-size:10.5px;font-weight:700;color:var(--primary);text-decoration:none;">관련 링크 보기 →</a>`:''}
     </div>`;
   }).join('');
-  document.getElementById('dp-meta').innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
-      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F1F5F9;"><span style="color:var(--tx2)">담당자</span><span style="font-weight:700;">${f.assignee||'미지정'}</span></div>
-      ${f.note?`<div style="padding:4px 0;"><span style="color:var(--tx3)">메모</span><div style="margin-top:3px;font-size:11.5px;">${f.note}</div></div>`:''}
-    </div>`;
+  const metaSection = document.getElementById('dp-meta-section');
+  const metaEl = document.getElementById('dp-meta');
+  if(f.note){
+    metaSection.style.display='';
+    metaEl.innerHTML=`<div style="font-size:12px;color:var(--tx2);line-height:1.6;white-space:pre-wrap;background:#F8FAFC;border-radius:7px;padding:9px 10px;">${f.note}</div>`;
+  } else {
+    metaSection.style.display='none';
+    metaEl.innerHTML='';
+  }
   // 관련 링크
   const linkLabels = {jira:'JIRA',wiki:'WIKI',help:'헬프센터',slack:'Slack'};
   const linkEntries = f.links ? Object.entries(f.links).filter(([k,v])=>v) : [];
@@ -1756,7 +1752,7 @@ function openFeatModal(id=null) {
         <input class="fi" id="snote-${s}" placeholder="${s} 특이사항 (요금, 조건, 앱링크 등)" 
           value="${(f?.solNotes&&f.solNotes[s])||''}"
           style="font-size:11.5px;padding:5px 9px;margin-bottom:6px;">
-        <input class="fi" id="sguide-${s}" placeholder="${s} 관련 가이드 URL"
+        <input class="fi" id="sguide-${s}" placeholder="${s} 관련 URL"
           value="${(f?.solGuides&&f.solGuides[s])||''}"
           style="font-size:11.5px;padding:5px 9px;">
       </div>`).join('');
@@ -1807,7 +1803,7 @@ function saveFeat() {
     if(v) solNotes[s]=v;
   });
 
-  // 솔루션별 관련 가이드 URL
+  // 솔루션별 관련 URL
   const solGuides={};
   SOLUTIONS.forEach(s=>{
     const v=document.getElementById('sguide-'+s)?.value.trim();
