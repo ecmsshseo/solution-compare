@@ -11,7 +11,7 @@
 <style>
 body{margin:0;padding:0;display:flex;}
 #sidebar{flex-shrink:0;}
-#shell-main{flex:1;display:flex;flex-direction:column;margin-left:var(--sw);min-height:100vh;}
+#shell-main{flex:1;display:flex;flex-direction:column;margin-left:0;min-height:100vh;}
 #shell-topbar{height:46px;min-height:46px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:8px;position:sticky;top:0;z-index:50;box-shadow:0 1px 3px rgba(0,0,0,.05);}
 #main-frame{flex:1;border:none;width:100%;min-height:calc(100vh - 46px);background:var(--bg);}
 .shell-search{max-width:360px;flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;}
@@ -27,7 +27,7 @@ body{margin:0;padding:0;display:flex;}
   </div>
   <div class="sb-sec">
     <div class="sb-sec-lbl">메뉴</div>
-    <div class="sb-item active" data-page="index"    onclick="navTo('index')"   ><span class="ni">🏠</span> 대시보드</div>
+    <div class="sb-item active" data-page="dashboard" onclick="navTo('dashboard')"><span class="ni">🏠</span> 대시보드</div>
     <div class="sb-item"        data-page="trend"    onclick="navTo('trend')"   ><span class="ni">📰</span> 솔루션 동향</div>
     <div class="sb-item"        data-page="compare"  onclick="navTo('compare')" ><span class="ni">⚖️</span> 기능 비교표</div>
     <div class="sb-item"        data-page="search"   onclick="navTo('search')"  ><span class="ni">🔍</span> 기능 검색</div>
@@ -47,7 +47,7 @@ body{margin:0;padding:0;display:flex;}
     </div>
     <button class="btn btn-o btn-sm" onclick="frameLogout()" style="flex-shrink:0;margin-left:6px;">로그아웃</button>
   </div>
-  <iframe id="main-frame" src="index.html"></iframe>
+  <iframe id="main-frame" src="dashboard.html"></iframe>
 </div>
 
 <!-- 로그인 화면 -->
@@ -66,7 +66,7 @@ body{margin:0;padding:0;display:flex;}
 </div>
 
 <script>
-const PAGE_TITLES={'index':'대시보드','trend':'솔루션 동향','compare':'기능 전체 비교표','search':'기능 검색','edit':'등록·수정','assignee':'나의 현황','admin':'관리자 메뉴'};
+const PAGE_TITLES={'dashboard':'대시보드','trend':'솔루션 동향','compare':'기능 전체 비교표','search':'기능 검색','edit':'등록·수정','assignee':'나의 현황','admin':'관리자 메뉴'};
 let _currentUser = null;
 
 function setActive(page) {
@@ -100,7 +100,7 @@ window.onFrameLogout = function() {
   _currentUser = null;
   document.getElementById('shell-login').style.display='flex';
   const frame=document.getElementById('main-frame');
-  if(frame) frame.src='index.html';
+  if(frame) frame.src='dashboard.html';
 };
 
 function frameLogout() {
