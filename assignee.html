@@ -1647,11 +1647,13 @@ function openDetail(id) {
   document.getElementById('dp-sol-grid').innerHTML=SOLUTIONS.map(s=>{
     const sv=f.status[s];
     const sn=f.solNotes&&f.solNotes[s];
+    const sg=f.solGuides&&f.solGuides[s];
     const label=sv==='O'?'✅ 지원':sv==='X'?'❌ 미지원':sv==='P'?'🔸 부분지원':sv==='A'?'🔌 앱/연동':'❓ 미조사';
     return `<div class="sol-st-item">
       <div class="sol-st-nm" style="color:${SOL_COLOR[s]}">${s}</div>
       <div class="sol-st-val">${label}</div>
       ${sn?`<div class="sol-st-note" style="margin-top:4px;font-size:10.5px;color:var(--tx2);background:#F8FAFC;border-radius:4px;padding:3px 6px;">${sn}</div>`:''}
+      ${sg?`<a href="${sg}" target="_blank" style="display:inline-flex;margin-top:5px;font-size:10.5px;font-weight:700;color:var(--primary);text-decoration:none;">관련 가이드 보기 →</a>`:''}
     </div>`;
   }).join('');
   document.getElementById('dp-meta').innerHTML=`
@@ -1741,6 +1743,9 @@ function openFeatModal(id=null) {
         </div>
         <input class="fi" id="snote-${s}" placeholder="${s} 특이사항 (요금, 조건, 앱링크 등)" 
           value="${(f?.solNotes&&f.solNotes[s])||''}"
+          style="font-size:11.5px;padding:5px 9px;margin-bottom:6px;">
+        <input class="fi" id="sguide-${s}" placeholder="${s} 관련 가이드 URL"
+          value="${(f?.solGuides&&f.solGuides[s])||''}"
           style="font-size:11.5px;padding:5px 9px;">
       </div>`).join('');
   }
@@ -1748,6 +1753,26 @@ function openFeatModal(id=null) {
   document.getElementById('delete-feat-btn').style.display = id ? 'inline-flex' : 'none';
   openModal('feature-modal');
 }
+
+function toggleLinkInput(type, checked) {
+  const wrap = document.getElementById('link-inputs');
+  if(!wrap) return;
+  const exist = document.getElementById('linkinp-' + type);
+  if(!checked) {
+    if(exist) exist.remove();
+    return;
+  }
+  if(exist) return;
+  const labels = {jira:'JIRA URL', wiki:'WIKI URL', help:'헬프센터 URL', slack:'Slack URL'};
+  const input = document.createElement('input');
+  input.className = 'fi';
+  input.id = 'linkinp-' + type;
+  input.placeholder = labels[type] || '관련 링크 URL';
+  input.style.fontSize = '11.5px';
+  input.style.padding = '6px 9px';
+  wrap.appendChild(input);
+}
+
 function saveFeat() {
   if(!canEdit()) { toast('편집 권한이 없습니다'); return; }
   const name = document.getElementById('fi-name').value.trim();
@@ -1770,6 +1795,13 @@ function saveFeat() {
     if(v) solNotes[s]=v;
   });
 
+  // 솔루션별 관련 가이드 URL
+  const solGuides={};
+  SOLUTIONS.forEach(s=>{
+    const v=document.getElementById('sguide-'+s)?.value.trim();
+    if(v) solGuides[s]=v;
+  });
+
   // 관련 링크
   const links={};
   ['jira','wiki','help','slack'].forEach(k=>{
@@ -1779,7 +1811,7 @@ function saveFeat() {
   });
 
   const fdata = {
-    name, cat, tags, status, solNotes, links,
+    name, cat, tags, status, solNotes, solGuides, links,
     desc:    document.getElementById('fi-desc').value.trim(),
     detail:  document.getElementById('fi-detail').value.trim(),
     note:    document.getElementById('fi-note').value.trim(),
