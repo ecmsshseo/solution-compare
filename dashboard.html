@@ -450,7 +450,7 @@ function buildDefaultFeatures() {
   // 카페24 기능만 팩트 기재, 경쟁사는 전부 Q(미조사) — 담당자가 직접 조사 후 업데이트
   const Q='Q', O='O', X='X', P='P', A='A';
   function mk(id,name,cat,desc,tags,ass,note,cafe24status) {
-    const st = {'카페24':cafe24status,'메이크샵':Q,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':Q};
+    const st = {'카페24':Q,'메이크샵':Q,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':Q};
     return {id,name,cat,desc,tags:tags||[],assignee:ass,note:note||'',status:st};
   }
   return [
