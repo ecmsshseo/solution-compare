@@ -25,7 +25,7 @@ jobs:
       - name: 동향 수집 실행
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python scripts/collect.py
+        run: python collect.py
 
       - name: 결과 커밋 & 푸시
         run: |
