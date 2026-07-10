@@ -1,585 +1,1947 @@
-# -*- coding: utf-8 -*-
-"""
-╔══════════════════════════════════════════════════════════╗
-║         솔루션 동향 자동 수집 스크립트                      ║
-║         커머스 코칭팀 | SIIC 부천센터                       ║
-╚══════════════════════════════════════════════════════════╝
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>솔루션 동향 | 솔루션 비교 허브</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+body{margin:0;padding:0;background:var(--bg);}
+#page-content{padding:18px 20px;}
+</style>
+</head>
+<body>
+<div id="page-content">
+<!-- ===== TREND ===== -->
+      <div id="view-trend" class="view active">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+          <button class="btn btn-p btn-sm edit-only" onclick="openModal('trend-modal')">+ 동향 추가</button>
+        </div>
 
-▶ 수집 소스 (3가지)
-   1. 각 솔루션사 공식 공지사항 (홈페이지 크롤링)
-   2. 네이버 뉴스  – 솔루션명 한글/영문 키워드 검색
-   3. 아이보스 마케팅 뉴스
-      - 일반 뉴스    : 솔루션명 포함 기사 → 제목만 수집
-      - 뉴스클리핑   : [X월 X일 마케팅 뉴스클리핑] 제목 → 본문 전체 수집
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="flbl" style="min-width:44px;">구분</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="fchip active" id="tsrc-all" onclick="filterTrendSource(this,'all')">전체</span>
+              <span class="fchip" id="tsrc-official" onclick="filterTrendSource(this,'official')">공식 공지</span>
+              <span class="fchip" id="tsrc-news" onclick="filterTrendSource(this,'news')">뉴스</span>
+              <span class="fchip" id="tsrc-internal" onclick="filterTrendSource(this,'internal')">내부 등록</span>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="flbl" style="min-width:44px;">솔루션</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="fchip active" onclick="filterTrendSol(this,'all')">전체</span>
+              <span class="fchip" onclick="filterTrendSol(this,'카페24')">카페24</span>
+              <span class="fchip" onclick="filterTrendSol(this,'메이크샵')">메이크샵</span>
+              <span class="fchip" onclick="filterTrendSol(this,'고도몰')">고도몰</span>
+              <span class="fchip" onclick="filterTrendSol(this,'아임웹')">아임웹</span>
+              <span class="fchip" onclick="filterTrendSol(this,'식스샵')">식스샵</span>
+              <span class="fchip" onclick="filterTrendSol(this,'플렉스지')">플렉스지</span>
+              <span class="fchip" onclick="filterTrendSol(this,'쇼피파이')">쇼피파이</span>
+            </div>
+          </div>
+          <div style="border-top:1px solid var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="flbl" style="min-width:44px;">유형</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="fchip active" onclick="filterTrendType(this,'all')">전체</span>
+              <span class="fchip" onclick="filterTrendType(this,'기능출시')">기능출시</span>
+              <span class="fchip" onclick="filterTrendType(this,'기능개선')">기능개선</span>
+              <span class="fchip" onclick="filterTrendType(this,'요금변경')">요금변경</span>
+              <span class="fchip" onclick="filterTrendType(this,'서비스종료')">서비스종료</span>
+            </div>
+          </div>
+        </div>
+        <div class="trend-grid">
+          <div class="card">
+            <div class="card-hd"><h3>일자별 타임라인</h3><span id="trend-count-label" style="font-size:11px;color:var(--tx3);"></span></div>
+            <div id="trend-list" style="max-height:640px;overflow-y:auto;"></div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:12px;">
+              <div class="card-hd"><h3>📊 솔루션별 동향 요약</h3></div>
+              <div id="trend-summary"></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-▶ GPT가 자동으로 판단하는 항목
-   summary       : 2문장 이내 한국어 핵심 요약
-   type          : 기능출시 / 기능개선 / 요금변경 / 서비스종료 / 파트너십 / 기타
-   defense       : Y(방어 활용 가능) / risk(주의 필요) / N(해당 없음)
-   defenseReason : 판단 근거 한 줄
+      <!-- ===== ASSIGNEE ===== -->
 
-▶ 실행 방법 (처음 한 번만)
-   pip install requests beautifulsoup4 feedparser openai lxml
+</div>
+<!-- DETAIL PANEL -->
+<div class="dpanel" id="dpanel">
+  <div class="dpanel-hd">
+    <div>
+      <div style="font-size:15px;font-weight:800;" id="dp-name"></div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:2px;" id="dp-cat"></div>
+    </div>
+    <button class="mcls" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="dpanel-body">
+    <div class="ds-section"><div class="ds-lbl">기능 설명</div><div id="dp-desc" style="font-size:13px;color:var(--tx2);line-height:1.6;"></div></div>
+    <div class="ds-section" id="dp-detail-sec" style="display:none;">
+      <div class="ds-lbl">상세 내용</div>
+      <div id="dp-detail" style="font-size:12px;color:var(--tx2);line-height:1.7;background:#F8FAFC;border-radius:7px;padding:10px 12px;white-space:pre-wrap;"></div>
+    </div>
+    <div class="ds-section"><div class="ds-lbl">솔루션별 지원 현황</div><div class="sol-st-grid" id="dp-sol-grid"></div></div>
+    <div class="ds-section" id="dp-meta-section"><div class="ds-lbl">메모</div><div id="dp-meta"></div></div>
+    <div class="ds-section" id="dp-links-section" style="display:none;"><div class="ds-lbl">관련 링크</div><div id="dp-links"></div></div>
+    <div class="ds-section"><div class="ds-lbl">관련 동향</div><div id="dp-trends" style="font-size:11.5px;color:var(--tx2);"></div></div>
+    <button class="btn btn-o edit-only" style="width:100%;margin-top:4px;" onclick="editFromDetail()">이 기능 편집</button>
+  </div>
+</div>
 
-▶ 실행 방법 (매번)
-   1. PowerShell 열기
-   2. $env:OPENAI_API_KEY="sk-proj-..."  ← API 키 입력
-   3. python scripts/collect.py
+<!-- MODALS -->
+<!-- Feature Modal -->
+<div class="modal-ov" id="feature-modal">
+  <div class="modal" style="max-width:780px;">
+    <div class="mhd">
+      <h2 id="feat-modal-title">기능 추가</h2>
+      <button class="mcls" onclick="closeModal('feature-modal')">✕</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="edit-id">
 
-▶ 결과 파일
-   data/trends.json  (누적 저장, 최신순, 최대 500건)
-   → GitHub에 push 하면 사이트에 자동 반영
-"""
+      <!-- 기본 정보 -->
+      <div style="background:#F8FAFC;border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:10px;letter-spacing:.05em;">기본 정보</div>
+        <div class="fg2" style="margin-bottom:10px;">
+          <div class="fr" style="margin-bottom:0;"><label class="fl">기능명 *</label><input class="fi" id="fi-name" placeholder="예: 스마트에디터 3.0"></div>
+          <div class="fr" style="margin-bottom:0;"><label class="fl">카테고리 *</label><select class="fs" id="fi-cat"></select></div>
+        </div>
+        <div class="fr" style="margin-bottom:0;"><label class="fl">태그</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-app"> 앱/연동</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-ai"> AI</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-prem"> 유료</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="tag-beta"> 베타</label>
+            </div>
+        </div>
+        <div class="fg2">
+          <div class="fr" style="margin-bottom:0;"><label class="fl">담당자</label>
+            <select class="fs" id="fi-ass">
+              <option value="">미지정</option>
+              <option value="강정원">강정원</option>
+              <option value="김세림">김세림</option>
+              <option value="박선하">박선하</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
-import os, json, time, hashlib, re
-from datetime import datetime, timedelta, timezone
+      <!-- 기능 설명 + 상세 내용 -->
+      <div style="background:#F8FAFC;border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:10px;letter-spacing:.05em;">기능 설명</div>
+        <div class="fr"><label class="fl">한줄 설명 <span style="color:var(--tx3);font-weight:400;">(비교표에 노출)</span></label>
+          <input class="fi" id="fi-desc" placeholder="예: 엑셀 파일로 상품 일괄 등록 가능">
+        </div>
+        <div class="fr" style="margin-bottom:0;"><label class="fl">상세 내용 <span style="color:var(--tx3);font-weight:400;">(클릭 시 상세 패널에 노출 — 조건, 제한사항, 고객 대응 포인트 등)</span></label>
+          <textarea class="fta" id="fi-detail" placeholder="예: 최대 1,000개까지 일괄 등록 가능. CSV 형식만 지원. 이미지는 별도 업로드 필요.&#10;타사이전 방어 포인트: 경쟁사 대비 등록 가능 행 수, 지원 포맷 차이 언급 가능" style="min-height:90px;"></textarea>
+        </div>
+      </div>
 
-import requests
-from bs4 import BeautifulSoup
-from openai import OpenAI
+      <!-- 솔루션별 지원 현황 + 솔루션별 메모 -->
+      <div style="background:#F8FAFC;border-radius:8px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:10px;letter-spacing:.05em;">솔루션별 지원 현황</div>
+        <div id="sol-inputs-wrap"></div>
+      </div>
 
+      <!-- 관련 링크 + 메모 -->
+      <div style="background:#F8FAFC;border-radius:8px;padding:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:10px;letter-spacing:.05em;">링크 · 메모</div>
+        <div class="fr">
+          <label class="fl">관련 링크</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="link-jira" onchange="toggleLinkInput('jira',this.checked)"> JIRA</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="link-wiki" onchange="toggleLinkInput('wiki',this.checked)"> WIKI</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="link-help" onchange="toggleLinkInput('help',this.checked)"> 헬프센터</label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="link-slack" onchange="toggleLinkInput('slack',this.checked)"> Slack</label>
+          </div>
+          <div id="link-inputs" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+        <div class="fr" style="margin-bottom:0;"><label class="fl">비고/메모</label>
+          <textarea class="fta" id="fi-note" placeholder="특이사항, 요금 조건 등" style="min-height:50px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeModal('feature-modal')" style="min-width:68px;">취소</button>
+      <button class="btn btn-d" id="delete-feat-btn" onclick="deleteCurFeat()" style="display:none;min-width:68px;">삭제</button>
+      <button class="btn btn-p" onclick="saveFeat()" style="min-width:68px;">저장</button>
+    </div>
+  </div>
+</div>
 
-# ┌─────────────────────────────────────────────────────────┐
-# │  ★ 담당자 설정 영역 ★                                    │
-# │  아래 항목만 수정하면 됩니다. 코드 본문은 건드리지 마세요.  │
-# └─────────────────────────────────────────────────────────┘
+<!-- Trend Modal -->
+<div class="modal-ov" id="trend-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="mhd"><h2>동향 추가</h2><button class="mcls" onclick="closeModal('trend-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="fg2">
+        <div class="fr"><label class="fl">날짜 *</label><input class="fi" type="date" id="ti-date"></div>
+        <div class="fr"><label class="fl">솔루션 *</label>
+          <select class="fs" id="ti-sol">
+            <option>카페24</option><option>메이크샵</option><option>고도몰</option>
+            <option>아임웹</option><option>식스샵</option><option>플렉스지</option><option>쇼피파이</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg2">
+        <div class="fr"><label class="fl">유형</label>
+          <select class="fs" id="ti-type">
+            <option>기능출시</option><option>기능개선</option><option>서비스종료</option>
+            <option>요금변경</option><option>프로모션</option><option>정책변경</option><option>인수합병</option><option>기타</option>
+          </select>
+        </div>
+        <div class="fr"><label class="fl">담당자</label>
+          <select class="fs" id="ti-ass"><option value="">미지정</option><option>강정원</option><option>김세림</option><option>박선하</option></select>
+        </div>
+      </div>
+      <div class="fr"><label class="fl">제목 *</label><input class="fi" id="ti-title" placeholder="예: AI 상품 설명 자동 생성 기능 정식 출시"></div>
+      <div class="fr"><label class="fl">내용</label><textarea class="fta" id="ti-content" placeholder="상세 내용, 출처 URL, 고객 대응 포인트 등" style="min-height:90px;"></textarea></div>
+      <div class="fr"><label class="fl">출처 구분 *</label>
+        <select class="fs" id="ti-source">
+          <option value="internal">📋 내부 등록 (직접 발견·제보)</option>
+          <option value="official">📢 공식 공지 (솔루션사 공지사항)</option>
+          <option value="news">📰 뉴스 (언론·미디어)</option>
+        </select>
+      </div>
+      <div class="fr"><label class="fl">출처 URL</label>
+        <input class="fi" id="ti-url" placeholder="공지사항 링크 (있을 경우)">
+      </div>
+      <div class="fr"><label class="fl">타사이전 방어 관련 여부</label>
+        <select class="fs" id="ti-defense">
+          <option value="N">해당없음</option>
+          <option value="Y">방어 활용 가능</option>
+          <option value="risk">주의 필요 (경쟁사 강점)</option>
+        </select>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeModal('trend-modal')" style="min-width:68px;">취소</button>
+      <button class="btn btn-p" onclick="saveTrend()" style="min-width:68px;">저장</button>
+    </div>
+  </div>
+</div>
 
-# ── 수집 기간 설정
-COLLECT_DAYS = 7          # 며칠치 뉴스를 수집할지 (기본: 7일)
-MAX_SAVE     = 500        # trends.json에 최대 몇 건을 보관할지
+<!-- User Modal (Admin) -->
+<div class="modal-ov" id="user-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="mhd"><h2>👤 사용자 추가</h2><button class="mcls" onclick="closeModal('user-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="fr"><label class="fl">그룹웨어 아이디 (@ 앞부분)</label><input class="fi" id="ui-id" placeholder="예: sehee.seo"></div>
+      <div class="fr"><label class="fl">이름</label><input class="fi" id="ui-name" placeholder="예: 서세희"></div>
+      <div class="fr"><label class="fl">비밀번호</label><input class="fi" type="password" id="ui-pw" placeholder="초기 비밀번호"></div>
+      <div class="fr"><label class="fl">역할</label>
+        <select class="fs" id="ui-role">
+          <option value="member">일반 (담당자)</option>
+          <option value="admin">관리자</option>
+        </select>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeModal('user-modal')">취소</button>
+      <button class="btn btn-p" onclick="addUser()">추가</button>
+    </div>
+  </div>
+</div>
 
-# ── 솔루션별 검색 키워드 설정
-#    키워드에 포함된 단어가 뉴스 제목에 있을 때만 수집합니다.
-#    영문 키워드를 추가하면 네이버 뉴스 영문 검색도 합니다.
-SOLUTIONS = [
-    {
-        "name":        "카페24",
-        "keywords_ko": ["카페24"],
-        "keywords_en": ["cafe24", "Cafe24"],
-    },
-    {
-        "name":        "메이크샵",
-        "keywords_ko": ["메이크샵"],
-        "keywords_en": ["makeshop", "MakeShop"],
-    },
-    {
-        "name":        "고도몰",
-        "keywords_ko": ["고도몰"],
-        "keywords_en": ["godomall", "Godomall"],
-    },
-    {
-        "name":        "아임웹",
-        "keywords_ko": ["아임웹"],
-        "keywords_en": ["imweb", "Imweb"],
-    },
-    {
-        "name":        "식스샵",
-        "keywords_ko": ["식스샵"],
-        "keywords_en": ["sixshop", "Sixshop"],
-    },
-    {
-        "name":        "플렉스지",
-        "keywords_ko": ["플렉스지"],
-        "keywords_en": ["flexii", "Flexii"],
-    },
-    {
-        "name":        "쇼피파이",
-        "keywords_ko": ["쇼피파이"],
-        "keywords_en": ["shopify", "Shopify"],
-    },
-]
+<div class="toast" id="toast"></div>
+<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(135deg,#0a1628 0%,#0d2247 50%,#0a1628 100%);display:none;align-items:center;justify-content:center;z-index:9999;">
+  <div style="background:#fff;border-radius:16px;padding:40px 36px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="font-size:36px;margin-bottom:8px;">📊</div>
+    <div style="font-size:18px;font-weight:800;color:#0F172A;margin-bottom:4px;">솔루션 비교 허브</div>
+    <div style="font-size:12px;color:#94A3B8;margin-bottom:28px;">SIIC 부천센터 · 커머스 코칭팀</div>
+    <button id="google-login-btn" style="width:100%;padding:12px;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:600;color:#374151;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18">
+      Google 계정으로 로그인
+    </button>
+    <div id="login-err" style="margin-top:12px;font-size:11.5px;color:#EF4444;min-height:16px;"></div>
+    <div style="margin-top:16px;font-size:11px;color:#94A3B8;">카페24 계정(@in.cd24.kr)으로 로그인 해주세요.</div>
+  </div>
+</div>
+<script>
 
-# ── 각 솔루션사 공식 공지 URL
-#    접속이 안 되거나 주소가 바뀌면 여기서 수정하세요.
-NOTICE_URLS = {
-    "카페24_운영자공지": "https://shopnotice.cafe24.com/list?bbs_no=5",
-    "카페24_뉴스룸":     "https://news.cafe24.com/kr/",
-    "메이크샵":         "https://www.makeshop.co.kr/newmakeshop/home/notice_list.html",
-    "고도몰":           "https://www.godomall.com/community/notice.php",
-    "아임웹":           "https://imweb.me/faq?mode=notice",
-    "식스샵":           "https://www.sixshop.com/blog",
-    "쇼피파이_RSS":     "https://www.shopify.com/blog/changelog.atom",
+// ══════════════════════════════════════════════
+//  CONFIG & DATA
+// ══════════════════════════════════════════════
+const SOLUTIONS = ['카페24','메이크샵','고도몰','아임웹','식스샵','플렉스지','쇼피파이'];
+const SOL_COLOR = {'카페24':'#0066FF','메이크샵':'#FF6600','고도몰':'#00AA44','아임웹':'#6C3CE1','식스샵':'#FF3366','플렉스지':'#00BBDD','쇼피파이':'#96BF48'};
+const SOL_CLS = {'카페24':'cafe24','메이크샵':'makeshop','고도몰':'godomall','아임웹':'imweb','식스샵':'sixshop','플렉스지':'flexig','쇼피파이':'shopify'};
+
+// Default user accounts: id → {pw, name, role}
+// id = 그룹웨어 아이디 (@ 앞부분만)
+let USERS = {
+  'ecmsshseo':    {pw:'admin1234', name:'서세희', role:'admin'},
+  'serim.kim':    {pw:'pass1234',  name:'김세림', role:'editor'},
+  'sunha.park':   {pw:'pass1234',  name:'박선하', role:'editor'},
+  'jungwon.kang': {pw:'pass1234',  name:'강정원', role:'editor'},
+};
+// 권한 헬퍼
+const canEdit  = () => ['admin','editor'].includes(currentUser?.role);
+const canAdmin = () => currentUser?.role === 'admin';
+const ROLE_LABEL = {admin:'관리자', editor:'담당자', viewer:'일반'};
+
+let CATEGORIES = [
+  '쇼핑몰 기본','상품 관리','상품 전시/기획전','주문 관리','결제 수단',
+  '배송/물류','반품/교환/환불','회원/고객 관리','마케팅 - 쿠폰/할인',
+  '마케팅 - 문자/이메일/알림','마케팅 - SNS/채널','마케팅 - 제휴/어필리에이트',
+  '디자인/편집 도구','모바일 쇼핑몰','앱스토어/플러그인','SNS 커머스 연동',
+  '오픈마켓 연동','글로벌/다국어','분석/통계','AI 기능',
+  'ERP/SCM/연동','보안/관리','CS 도구','타사이전 방어 포인트'
+];
+
+let FEATURES = [];
+let TRENDS = [];
+let LOGS = [];
+
+let ST = {sol:'all', ass:'all', cat:'all', status:'all', trendSol:'all', trendType:'all', srchCat:'all'};
+let curFeatId = null;
+let currentUser = null;
+let activeSolCol = null;
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+function doLogin() { initUI(); }
+
+function doLogout() {
+  // 로그인 없음 — 새로고침으로 초기화
+  location.reload();
 }
 
-# ── 아이보스 마케팅 뉴스 목록 URL
-IBOSS_URL = "https://www.i-boss.co.kr/ab-2876"
-
-# ┌─────────────────────────────────────────────────────────┐
-# │  이하 코드는 수정하지 마세요.                              │
-# └─────────────────────────────────────────────────────────┘
-
-# ── 시스템 설정
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-KST    = timezone(timedelta(hours=9))
-TODAY  = datetime.now(KST).strftime("%Y-%m-%d")
-CUTOFF = (datetime.now(KST) - timedelta(days=COLLECT_DAYS)).strftime("%Y-%m-%d")
-
-DATA_PATH = "data/trends.json"
-
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "ko-KR,ko;q=0.9",
+function initUI() {
+  loadFromStorage();
+  if(!currentUser) currentUser = {id:'guest', name:'커머스 코칭팀', role:'admin'};
+  ASSIGNEES = getAssignees();
+  const unEl = document.getElementById('sb-username');
+  const urEl = document.getElementById('sb-userrole');
+  const adminMenu = document.getElementById('admin-menu-item');
+  if(unEl) unEl.textContent = currentUser.name;
+  if(urEl) urEl.textContent = ROLE_LABEL[currentUser.role] || '일반';
+  if(adminMenu) adminMenu.style.display = canAdmin() ? 'flex' : 'none';
+  populateCatFilter();
+  // 권한별 UI 제어
+  document.querySelectorAll('.edit-only').forEach(el=>{
+    el.style.display = canEdit() ? '' : 'none';
+  });
+  renderDashboard();
+  gv('dashboard');
 }
 
-# 아이보스 뉴스클리핑 제목 패턴
-CLIPPING_PATTERN = re.compile(r"\[\d+월\s*\d+일\s*마케팅\s*뉴스클리핑\]")
+function addLoginLog(id, name) {
+  LOGS.unshift({id, name, time: new Date().toLocaleString('ko-KR'), action:'로그인'});
+  if (LOGS.length > 100) LOGS.pop();
+}
+
+function addUser() {
+  const uid = document.getElementById('ui-id').value.trim();
+  const uname = document.getElementById('ui-name').value.trim();
+  const upw = document.getElementById('ui-pw').value;
+  const urole = document.getElementById('ui-role').value;
+  if (!uid||!uname||!upw) { toast('❌ 모든 항목을 입력하세요'); return; }
+  USERS[uid] = {pw:upw, name:uname, role:urole};
+  saveToStorage();
+  closeModal('user-modal');
+  toast('사용자 추가 완료');
+  renderAdminUsers();
+}
+
+// ══════════════════════════════════════════════
+//  STORAGE
+// ══════════════════════════════════════════════
+function loadFromStorage() {
+  FEATURES=buildDefaultFeatures(); TRENDS=buildDefaultTrends();
+  try{const sc=localStorage.getItem('sch-cats');if(sc)CATEGORIES=JSON.parse(sc);}catch(e){}
+  try{const sl=localStorage.getItem('sch-logs');if(sl)LOGS=JSON.parse(sl);}catch(e){}
+}
+
+// 자동 수집 동향 로드 (data/trends.json)
+function loadAutoTrends() {
+  const base = location.href.replace(/\/[^\/]*$/, '/');
+  fetch(base + 'data/trends.json?_=' + Date.now())
+    .then(r => r.ok ? r.json() : [])
+    .then(data => {
+      if(!data || !data.length) return;
+      const existingIds = new Set(TRENDS.map(t=>t.id));
+      const newItems = data.filter(t=>!existingIds.has(t.id)).map(t=>({
+        id:           t.id || ('auto_'+Math.random().toString(36).slice(2)),
+        title:        t.title || '',
+        content:      t.summary || t.title || '',
+        solution:     t.solution || '기타',
+        type:         t.type || '기타',
+        date:         t.date || '',
+        source:       t.source==='news'?'news':t.source==='official'?'official':'internal',
+        defense:      t.defense || 'N',
+        defenseReason:t.defenseReason || '',
+        url:          t.url || '',
+        auto:         true,
+      }));
+      if(!newItems.length) return;
+      TRENDS = [...newItems, ...TRENDS];
+      TRENDS.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      renderTrend();
+    })
+    .catch(()=>{});
+}
+function saveToStorage() {
+  try{localStorage.setItem('sch-cats',JSON.stringify(CATEGORIES));
+  localStorage.setItem('sch-logs',JSON.stringify(LOGS));}catch(e){}
+}
+
+// ══════════════════════════════════════════════
+//  VIEW NAVIGATION
+// ══════════════════════════════════════════════
+const VIEW_TITLES = {
+  dashboard:'대시보드', compare:'기능 전체 비교표', trend:'솔루션 동향 로그',
+  assignee:'나의 현황', edit:'내용 편집', search:'기능 검색', admin:'관리자 메뉴'
+};
+let _currentView = 'dashboard';
+
+function gv(v) {
+  if(!v || !document.getElementById('view-'+v)) return;
+  _currentView = v;
+
+  // 뷰 전환
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+
+  // 사이드바 active
+  document.querySelectorAll('.sb-item').forEach(el=>{
+    el.classList.toggle('active', el.dataset.view === v);
+  });
+
+  // 타이틀
+  const titleEl = document.getElementById('tb-title-txt');
+  if(titleEl) titleEl.textContent = VIEW_TITLES[v]||'';
+
+  // 렌더
+  renderView(v);
+}
+function renderView(v) {
+  // 매 이동마다 완전 초기화 렌더
+  if(v==='dashboard')  renderDashboard();
+  else if(v==='compare')  renderCompare();
+  else if(v==='trend')    renderTrend();
+  else if(v==='assignee') renderAssignee();
+  else if(v==='edit')     renderEdit();
+  else if(v==='search')   { srchCatFilter='all'; renderSearchView(); }
+  else if(v==='admin')    renderAdmin();
+}
+
+// ══════════════════════════════════════════════
+//  DEFAULT DATA — 카페24 기반 200개+
+// ══════════════════════════════════════════════
+function buildDefaultFeatures() {
+  const Q='Q',O='O',X='X',P='P',A='A';
+  function mk(id,name,cat,note,status){
+    return {id,name,cat,desc:'',tags:[],assignee:'',note:note||'',status};
+  }
+  return [
+    // --- 쇼핑몰 기본 ---
+    mk('f001','쇼핑몰 개설/무료 호스팅','쇼핑몰 기본','카페24만 개설+호스팅 무료. 타사는 월정액 또는 제한적 무료플랜',{'카페24':O,'메이크샵':X,'고도몰':X,'아임웹':P,'식스샵':P,'플렉스지':X,'쇼피파이':P}),
+    mk('f002','독립 도메인 연결','쇼핑몰 기본','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f003','멀티쇼핑몰 (서브몰)','쇼핑몰 기본','',{'카페24':P,'메이크샵':Q,'고도몰':P,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':P}),
+    mk('f004','무제한 상품 등록','쇼핑몰 기본','',{'카페24':O,'메이크샵':Q,'고도몰':O,'아임웹':P,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f005','SSL 보안인증서 기본 제공','쇼핑몰 기본','',{'카페24':P,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f006','PC+모바일 통합 관리자','쇼핑몰 기본','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f007','REST API 제공','쇼핑몰 기본','',{'카페24':O,'메이크샵':Q,'고도몰':A,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':O}),
+    mk('f008','Webhook 지원','쇼핑몰 기본','',{'카페24':Q,'메이크샵':Q,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':O}),
+    mk('f009','FTP 파일 관리','쇼핑몰 기본','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':X,'식스샵':X,'플렉스지':X,'쇼피파이':X}),
+    mk('f010','CDN 기본 제공','쇼핑몰 기본','',{'카페24':Q,'메이크샵':Q,'고도몰':P,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f011','쇼핑몰 복사/클론','쇼핑몰 기본','',{'카페24':Q,'메이크샵':Q,'고도몰':P,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- 상품 관리 ---
+    mk('f020','상품 옵션 관리','상품 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f021','옵션별 재고 관리','상품 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f022','엑셀 대량 상품 등록','상품 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f023','상품 카테고리 다단계','상품 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f024','상품 예약판매','상품 관리','',{'카페24':Q,'메이크샵':Q,'고도몰':P,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f025','번들/세트 상품','상품 관리','',{'카페24':Q,'메이크샵':Q,'고도몰':O,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f026','디지털 상품 판매','상품 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f027','상품 QR코드 생성','상품 관리','',{'카페24':Q,'메이크샵':Q,'고도몰':A,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f028','재입고 알림 신청','상품 관리','',{'카페24':Q,'메이크샵':O,'고도몰':O,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    // --- 결제 수단 ---
+    mk('f030','신용카드 결제','결제 수단','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f031','카카오페이','결제 수단','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':Q}),
+    mk('f032','네이버페이','결제 수단','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':Q}),
+    mk('f033','토스페이','결제 수단','',{'카페24':O,'메이크샵':Q,'고도몰':A,'아임웹':O,'식스샵':O,'플렉스지':Q,'쇼피파이':Q}),
+    mk('f034','무통장입금/가상계좌','결제 수단','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':Q}),
+    mk('f035','휴대폰 소액결제','결제 수단','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':Q,'쇼피파이':Q}),
+    mk('f036','에스크로 결제','결제 수단','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':Q}),
+    mk('f037','해외 결제 (페이팔/스트라이프)','결제 수단','',{'카페24':O,'메이크샵':Q,'고도몰':A,'아임웹':P,'식스샵':P,'플렉스지':Q,'쇼피파이':O}),
+    mk('f038','정기결제/구독 결제','결제 수단','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':P,'식스샵':P,'플렉스지':Q,'쇼피파이':A}),
+    mk('f039','후불결제 (외상)','결제 수단','',{'카페24':X,'메이크샵':X,'고도몰':X,'아임웹':X,'식스샵':X,'플렉스지':X,'쇼피파이':X}),
+    // --- 프로모션 ---
+    mk('f050','쿠폰 발급/관리','프로모션','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f051','적립금 (포인트)','프로모션','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f052','등급별 회원 혜택','프로모션','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f053','타임세일/플래시세일','프로모션','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f054','묶음 할인','프로모션','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f055','제휴 마케팅','프로모션','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':P,'식스샵':P,'플렉스지':Q,'쇼피파이':A}),
+    // --- 마케팅-채널 ---
+    mk('f060','구글 쇼핑 연동','마케팅-채널','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':O}),
+    mk('f061','네이버 쇼핑 연동','마케팅-채널','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':Q}),
+    mk('f062','카카오쇼핑 연동','마케팅-채널','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':A,'식스샵':Q,'플렉스지':Q,'쇼피파이':Q}),
+    mk('f063','인스타그램 쇼핑','마케팅-채널','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':O}),
+    mk('f064','유튜브 쇼핑 연동','마케팅-채널','',{'카페24':Q,'메이크샵':Q,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f065','메타 광고 픽셀','마케팅-채널','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f066','카카오 픽셀','마케팅-채널','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':Q}),
+    // --- 마케팅-운영 ---
+    mk('f067','이메일 마케팅','마케팅-운영','',{'카페24':A,'메이크샵':O,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':O,'쇼피파이':O}),
+    mk('f068','SMS/LMS 발송','마케팅-운영','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':A,'플렉스지':O,'쇼피파이':A}),
+    mk('f069','카카오알림톡','마케팅-운영','',{'카페24':A,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':A,'플렉스지':O,'쇼피파이':Q}),
+    mk('f070','팝업 빌더','마케팅-운영','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f071','SNS 공유 기능','마케팅-운영','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    // --- 디자인/편집 도구 ---
+    mk('f080','디자인 스킨 에디터','디자인/편집 도구','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f081','스마트에디터 (블록형)','디자인/편집 도구','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f082','모바일 별도 디자인','디자인/편집 도구','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':P}),
+    mk('f083','HTML/CSS 직접 편집','디자인/편집 도구','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f084','유료 스킨 마켓플레이스','디자인/편집 도구','',{'카페24':O,'메이크샵':O,'고도몰':A,'아임웹':A,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f085','동영상 배너 지원','디자인/편집 도구','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    // --- 주문 관리 ---
+    mk('f090','주문 관리','주문 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f091','주문 수정/취소/환불','주문 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f092','엑셀 주문 일괄 처리','주문 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f093','운송장 자동 등록','주문 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f094','반품/교환 관리','주문 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f095','주문 알림 (실시간)','주문 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    // --- 재고/물류 ---
+    mk('f100','재고 관리','재고/물류','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f101','발주/입고 관리','재고/물류','',{'카페24':Q,'메이크샵':Q,'고도몰':O,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':P}),
+    mk('f102','WMS 연동','재고/물류','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f103','풀필먼트 서비스','재고/물류','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f104','다중 배송지 관리','재고/물류','',{'카페24':Q,'메이크샵':Q,'고도몰':P,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':X}),
+    // --- 회원/고객 관리 ---
+    mk('f110','회원 등급 관리','회원/고객 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f111','비회원 구매 지원','회원/고객 관리','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f112','소셜 로그인 (카카오/네이버/구글)','회원/고객 관리','',{'카페24':O,'메이크샵':O,'고도몰':A,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f113','회원 CRM','회원/고객 관리','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    mk('f114','블랙리스트 관리','회원/고객 관리','',{'카페24':A,'메이크샵':Q,'고도몰':P,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f115','B2B 회원 별도 관리','회원/고객 관리','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- 통계/분석 ---
+    mk('f120','구글 애널리틱스 연동','통계/분석','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f121','자체 통계 대시보드','통계/분석','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f122','상품별 판매 분석','통계/분석','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f123','A/B 테스트','통계/분석','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f124','히트맵 분석','통계/분석','',{'카페24':A,'메이크샵':Q,'고도몰':A,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- CS/고객지원 ---
+    mk('f130','1:1 문의 게시판','CS/고객지원','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f131','FAQ 게시판','CS/고객지원','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f132','상품 Q&A','CS/고객지원','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f133','상품 리뷰/별점','CS/고객지원','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f134','포토/영상 리뷰','CS/고객지원','',{'카페24':A,'메이크샵':O,'고도몰':O,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    mk('f135','챗봇 연동','CS/고객지원','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    // --- 회계/세금 ---
+    mk('f140','세금계산서 발행','회계/세금','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':P,'플렉스지':O,'쇼피파이':A}),
+    mk('f141','현금영수증 발행','회계/세금','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':P,'플렉스지':O,'쇼피파이':Q}),
+    mk('f142','정산 관리','회계/세금','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':A}),
+    mk('f143','ERP 연동','회계/세금','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    // --- 글로벌 ---
+    mk('f150','다국어 지원','글로벌','',{'카페24':O,'메이크샵':P,'고도몰':O,'아임웹':Q,'식스샵':P,'플렉스지':P,'쇼피파이':O}),
+    mk('f151','다통화 결제','글로벌','',{'카페24':O,'메이크샵':P,'고도몰':P,'아임웹':Q,'식스샵':P,'플렉스지':P,'쇼피파이':O}),
+    mk('f152','해외 배송 관리','글로벌','',{'카페24':O,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':O}),
+    mk('f153','글로벌 마켓플레이스 연동','글로벌','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    // --- 확장/연동 ---
+    mk('f160','앱스토어 (플러그인 마켓)','확장/연동','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f161','POS 연동','확장/연동','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':O}),
+    mk('f162','EMS/DHL 등 해외배송 연동','확장/연동','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':O}),
+    mk('f163','재고 바코드/QR 관리','확장/연동','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':Q,'식스샵':Q,'플렉스지':A,'쇼피파이':A}),
+    mk('f164','드롭쉬핑 지원','확장/연동','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    // --- AI/자동화 ---
+    mk('f170','AI 상품 추천','AI/자동화','',{'카페24':Q,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    mk('f171','AI 챗봇 CS','AI/자동화','',{'카페24':Q,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    mk('f172','AI 상품 설명 생성','AI/자동화','',{'카페24':Q,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    mk('f173','자동 번역','AI/자동화','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    // --- 모바일 쇼핑 ---
+    mk('f180','모바일 앱 빌더','모바일 쇼핑','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':Q,'플렉스지':A,'쇼피파이':A}),
+    mk('f181','PWA 지원','모바일 쇼핑','',{'카페24':Q,'메이크샵':Q,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f182','앱 푸시 알림','모바일 쇼핑','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- 보안/관리 ---
+    mk('f190','관리자 권한 세분화','보안/관리','',{'카페24':P,'메이크샵':P,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':O}),
+    mk('f191','2단계 인증 (2FA)','보안/관리','',{'카페24':A,'메이크샵':Q,'고도몰':Q,'아임웹':X,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f192','개인정보 처리방침 자동 생성','보안/관리','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f193','GDPR 대응','보안/관리','',{'카페24':P,'메이크샵':P,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f194','IP 접근 제한','보안/관리','',{'카페24':A,'메이크샵':Q,'고도몰':Q,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- 쇼핑 기능 ---
+    mk('f200','상품 비교 기능','쇼핑 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f201','위시리스트','쇼핑 기능','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    mk('f202','최근 본 상품','쇼핑 기능','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    mk('f203','장바구니 저장','쇼핑 기능','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    mk('f204','구독/정기배송','쇼핑 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- 특화 기능 ---
+    mk('f210','라이브 커머스','특화 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f211','경매/역경매','특화 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f212','렌탈 판매','특화 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f213','중고 마켓플레이스','특화 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':X,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f214','멤버십/유료 회원권','특화 기능','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    // --- 배송/물류 ---
+    mk('f220','배송비 정책 설정','배송/물류','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f221','묶음 배송','배송/물류','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    mk('f222','새벽/당일 배송','배송/물류','',{'카페24':A,'메이크샵':A,'고도몰':Q,'아임웹':Q,'식스샵':Q,'플렉스지':Q,'쇼피파이':A}),
+    mk('f223','배송 추적','배송/물류','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':O}),
+    // --- 채널/마켓연동 ---
+    mk('f230','오픈마켓 연동 (쿠팡 등)','채널/마켓연동','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':A,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    mk('f231','홈쇼핑 연동','채널/마켓연동','',{'카페24':Q,'메이크샵':Q,'고도몰':Q,'아임웹':X,'식스샵':X,'플렉스지':X,'쇼피파이':X}),
+    mk('f232','아마존/이베이 셀러 연동','채널/마켓연동','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':X,'식스샵':A,'플렉스지':A,'쇼피파이':A}),
+    // --- 이메일/구독 ---
+    mk('f240','뉴스레터 구독 관리','이메일/구독','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+    mk('f241','자동화 이메일 시퀀스','이메일/구독','',{'카페24':A,'메이크샵':A,'고도몰':A,'아임웹':Q,'식스샵':Q,'플렉스지':P,'쇼피파이':A}),
+    // --- B2B/도매 ---
+    mk('f250','재판매자 (리셀러) 관리','B2B/도매','',{'카페24':Q,'메이크샵':Q,'고도몰':Q,'아임웹':X,'식스샵':X,'플렉스지':P,'쇼피파이':P}),
+    mk('f251','견적 요청 기능','B2B/도매','',{'카페24':A,'메이크샵':A,'고도몰':P,'아임웹':Q,'식스샵':Q,'플렉스지':O,'쇼피파이':A}),
+    mk('f252','대량 구매 할인','B2B/도매','',{'카페24':O,'메이크샵':O,'고도몰':O,'아임웹':O,'식스샵':O,'플렉스지':O,'쇼피파이':O}),
+  ];
+}
+
+function buildDefaultTrends(){return [];}
+
+// ══════════════════════════════════════════════
+//  RENDER DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard() {
+  ASSIGNEES = getAssignees();
+  if(!FEATURES.length) loadFromStorage();
+
+  const total     = FEATURES.length;
+  const catList   = [...new Set(FEATURES.map(f=>f.cat))];
+  const cafe24O   = FEATURES.filter(f=>f.status['카페24']==='O').length;
+  const cafe24A   = FEATURES.filter(f=>f.status['카페24']==='A').length;
+  const cafe24X   = FEATURES.filter(f=>f.status['카페24']==='X').length;
+  const cafe24Q   = FEATURES.filter(f=>f.status['카페24']==='Q').length;
+  const unknownN  = FEATURES.filter(f=>Object.values(f.status).some(v=>v==='Q')).length;
+  const gapN      = FEATURES.filter(f=>f.status['카페24']==='X'&&SOLUTIONS.some(s=>s!=='카페24'&&f.status[s]==='O')).length;
+  const exclusiveN= FEATURES.filter(f=>f.status['카페24']==='O'&&SOLUTIONS.filter(s=>s!=='카페24').every(s=>['X','Q'].includes(f.status[s]))).length;
+
+  const S=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  S('s-total',total); S('s-cats',catList.length);
+  S('s-cafe24',Math.round((cafe24O+cafe24A)/total*100)+'%');
+  S('s-unknown',unknownN); S('s-gap',gapN); S('s-exclusive',exclusiveN);
+  // 미조사 비율 표시
+  const pctEl = document.getElementById('s-unknown-pct');
+  if(pctEl && total>0) pctEl.textContent = '(' + Math.round(unknownN/total*100) + '%)';
+
+  // ──────────────────────────────────────────
+  // 1. 도넛 차트 — 카페24 기능 현황
+  // ──────────────────────────────────────────
+  const donutC = document.getElementById('donut-canvas');
+  if(donutC && total>0) {
+    const dpr=window.devicePixelRatio||1;
+    donutC.width=160*dpr; donutC.height=160*dpr;
+    donutC.style.width='160px'; donutC.style.height='160px';
+    const dc=donutC.getContext('2d'); dc.scale(dpr,dpr);
+    dc.clearRect(0,0,160,160);
+    const segments=[
+      {v:cafe24O, c:'#10B981', label:'지원'},
+      {v:cafe24A, c:'#00C2A8', label:'앱/연동'},
+      {v:cafe24X, c:'#F1F5F9', label:'미지원'},
+      {v:cafe24Q, c:'#FDE68A', label:'미조사'},
+    ];
+    const cx=80,cy=80,r=72,inner=42;
+    let ang=-Math.PI/2;
+    segments.forEach(seg=>{
+      const slice=seg.v/total*Math.PI*2;
+      dc.beginPath(); dc.moveTo(cx,cy);
+      dc.arc(cx,cy,r,ang,ang+slice); dc.closePath();
+      dc.fillStyle=seg.c; dc.fill();
+      ang+=slice;
+    });
+    // 가운데 구멍
+    dc.beginPath(); dc.arc(cx,cy,inner,0,Math.PI*2);
+    dc.fillStyle='#fff'; dc.fill();
+    // 중앙 텍스트
+    dc.fillStyle='#0F172A'; dc.textAlign='center'; dc.textBaseline='middle';
+    dc.font='bold 18px monospace';
+    dc.fillText(Math.round((cafe24O+cafe24A)/total*100)+'%',cx,cy-8);
+    dc.font='10px sans-serif'; dc.fillStyle='#94A3B8';
+    dc.fillText('카페24',cx,cy+10);
+
+    // 범례
+    const leg=document.getElementById('donut-legend');
+    if(leg) leg.innerHTML=segments.map(s=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;border-radius:5px;margin-bottom:3px;background:#F8FAFC;">
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span style="width:10px;height:10px;border-radius:2px;background:${s.c};display:inline-block;flex-shrink:0;"></span>
+          <span style="font-size:11px;color:var(--tx2);">${s.label}</span>
+        </span>
+        <span style="font-size:11px;font-weight:700;font-family:monospace;">${s.v}개</span>
+      </div>`).join('');
+  }
+
+  // ──────────────────────────────────────────
+  // 2. 레이더 차트 — 솔루션별 카테고리 커버리지
+  // ──────────────────────────────────────────
+  const radarC = document.getElementById('radar-canvas');
+  if(radarC && total>0) {
+    // 주요 카테고리 8개만 선택
+    const radarCats = catList.slice(0,8);
+    const radarSols = ['카페24','메이크샵','고도몰','아임웹','쇼피파이']; // 5개만 (겹침 방지)
+    const radarColors = ['#0066FF','#FF6600','#00AA44','#6C3CE1','#96BF48'];
+    const dpr=window.devicePixelRatio||1;
+    const W=320,H=240;
+    radarC.width=W*dpr; radarC.height=H*dpr;
+    radarC.style.width=W+'px'; radarC.style.height=H+'px';
+    const rc=radarC.getContext('2d'); rc.scale(dpr,dpr);
+    rc.clearRect(0,0,W,H);
+
+    const cx=W/2,cy=H/2+10,maxR=90;
+    const n=radarCats.length;
+    const angles=radarCats.map((_,i)=>(-Math.PI/2)+(i/n)*Math.PI*2);
+
+    // 배경 그리드 (5단계)
+    [0.2,0.4,0.6,0.8,1.0].forEach(scale=>{
+      rc.beginPath();
+      angles.forEach((a,i)=>{
+        const x=cx+Math.cos(a)*maxR*scale;
+        const y=cy+Math.sin(a)*maxR*scale;
+        i===0?rc.moveTo(x,y):rc.lineTo(x,y);
+      });
+      rc.closePath();
+      rc.strokeStyle=scale===1?'#CBD5E1':'#E2E8F0';
+      rc.lineWidth=scale===1?1.5:1;
+      rc.stroke();
+      // 퍼센트 라벨
+      if(scale===0.5||scale===1.0) {
+        rc.fillStyle='#94A3B8'; rc.font='9px monospace';
+        rc.textAlign='center'; rc.textBaseline='middle';
+        rc.fillText((scale*100).toFixed(0)+'%', cx, cy-maxR*scale-4);
+      }
+    });
+    // 축선
+    angles.forEach((a,i)=>{
+      rc.beginPath(); rc.moveTo(cx,cy);
+      rc.lineTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);
+      rc.strokeStyle='#E2E8F0'; rc.lineWidth=1; rc.stroke();
+      // 카테고리 라벨
+      const lx=cx+Math.cos(a)*(maxR+16), ly=cy+Math.sin(a)*(maxR+14);
+      rc.fillStyle='#475569'; rc.font='bold 9px sans-serif';
+      rc.textAlign='center'; rc.textBaseline='middle';
+      const label=radarCats[i].length>5?radarCats[i].slice(0,5)+'..':radarCats[i];
+      rc.fillText(label,lx,ly);
+    });
+    // 솔루션별 폴리곤
+    radarSols.forEach((sol,si)=>{
+      rc.beginPath();
+      angles.forEach((a,i)=>{
+        const cat=radarCats[i];
+        const cf=FEATURES.filter(f=>f.cat===cat);
+        const sup=cf.filter(f=>f.status[sol]==='O'||f.status[sol]==='A').length;
+        const val=cf.length>0?sup/cf.length:0;
+        const x=cx+Math.cos(a)*maxR*val;
+        const y=cy+Math.sin(a)*maxR*val;
+        i===0?rc.moveTo(x,y):rc.lineTo(x,y);
+      });
+      rc.closePath();
+      rc.strokeStyle=radarColors[si]; rc.lineWidth=2; rc.stroke();
+      rc.fillStyle=radarColors[si]+'28'; rc.fill();
+    });
+    // 범례
+    const existLeg=radarC.parentElement.querySelector('.radar-legend');
+    if(!existLeg) {
+      const legDiv=document.createElement('div');
+      legDiv.className='radar-legend';
+      legDiv.style.cssText='display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px;';
+      legDiv.innerHTML=radarSols.map((s,i)=>`
+        <span style="display:flex;align-items:center;gap:4px;font-size:10.5px;">
+          <span style="width:20px;height:3px;background:${radarColors[i]};border-radius:2px;display:inline-block;"></span>${s}
+        </span>`).join('');
+      radarC.parentElement.appendChild(legDiv);
+    }
+  }
+
+  // ──────────────────────────────────────────
+  // 3. 히트맵 테이블 — 카테고리 × 솔루션
+  // ──────────────────────────────────────────
+  const hm=document.getElementById('cat-heatmap');
+  if(hm) {
+    const hcats=catList.slice(0,14);
+    let tbl=`<table style="border-collapse:collapse;font-size:10px;width:100%;">
+      <thead><tr>
+        <th style="text-align:left;padding:5px 8px;color:var(--tx3);font-weight:700;min-width:100px;font-size:10px;">카테고리</th>
+        ${SOLUTIONS.map(s=>`<th style="text-align:center;padding:4px 2px;color:${SOL_COLOR[s]};font-weight:800;font-size:9.5px;min-width:46px;">${s.replace('카페24','카24').replace('메이크샵','메샵').replace('쇼피파이','쇼피').replace('플렉스지','플렉스').replace('식스샵','식스').replace('아임웹','아임').replace('고도몰','고도')}</th>`).join('')}
+      </tr></thead><tbody>`;
+    hcats.forEach((cat,ri)=>{
+      const cf=FEATURES.filter(f=>f.cat===cat);
+      tbl+=`<tr style="background:${ri%2===0?'#F8FAFC':'#fff'};">
+        <td style="padding:5px 8px;font-weight:700;color:var(--primary);white-space:nowrap;font-size:10.5px;cursor:pointer;text-decoration:underline;text-decoration-style:dotted;"
+          title="${cat} → 클릭하면 비교표로 이동"
+          onclick="filterCatAndGo('${cat}')"
+        >${cat.length>10?cat.slice(0,10)+'..':cat}</td>
+        ${SOLUTIONS.map(s=>{
+          const sup=cf.filter(f=>f.status[s]==='O'||f.status[s]==='A').length;
+          const unk=cf.filter(f=>f.status[s]==='Q').length;
+          const tot=cf.length;
+          if(unk===tot) return `<td style="text-align:center;padding:4px 2px;"><span style="display:inline-block;background:#F1F5F9;color:#94A3B8;border-radius:4px;padding:2px 4px;font-size:9px;">미조사</span></td>`;
+          const pct=tot>0?Math.round(sup/tot*100):0;
+          const bg=pct>=80?'#DCFCE7':pct>=50?'#FEF9C3':pct>=20?'#FEE2E2':'#F1F5F9';
+          const tc=pct>=80?'#166534':pct>=50?'#854D0E':pct>=20?'#991B1B':'#6B7280';
+          return `<td style="text-align:center;padding:4px 2px;">
+            <span style="display:inline-block;background:${bg};color:${tc};border-radius:4px;padding:2px 5px;font-weight:700;font-size:9.5px;min-width:28px;">${pct}%</span>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    });
+    tbl+='</tbody></table>';
+    hm.innerHTML=tbl;
+  }
+    // ──────────────────────────────────────────
+  // 4. Canvas 수평 바 — 경쟁사 우위 기능 (갭 분석)
+  // ──────────────────────────────────────────
+  const gapC=document.getElementById('gap-canvas');
+  if(gapC) {
+    const gapData=SOLUTIONS.filter(s=>s!=='카페24').map(s=>({
+      sol:s, cnt:FEATURES.filter(f=>f.status['카페24']==='X'&&f.status[s]==='O').length, color:SOL_COLOR[s]
+    })).sort((a,b)=>b.cnt-a.cnt);
+    const maxG=Math.max(...gapData.map(g=>g.cnt),1);
+    const dpr=window.devicePixelRatio||1;
+    const PW=gapC.parentElement.clientWidth-36||270;
+    const PH=gapData.length*36+20;
+    gapC.width=PW*dpr; gapC.height=PH*dpr;
+    gapC.style.width=PW+'px'; gapC.style.height=PH+'px';
+    const gc=gapC.getContext('2d'); gc.scale(dpr,dpr);
+    gc.clearRect(0,0,PW,PH);
+    const LW=55, BH=18, GP=36;
+    gapData.forEach((g,i)=>{
+      const y=i*GP+14;
+      const bLen=(g.cnt/maxG)*(PW-LW-36);
+      gc.fillStyle='#64748B'; gc.font='bold 10px sans-serif';
+      gc.textAlign='right'; gc.textBaseline='middle';
+      gc.fillText(g.sol,LW-5,y+BH/2);
+      // 배경
+      gc.fillStyle='#F1F5F9'; gc.beginPath();
+      gc.roundRect?gc.roundRect(LW,y,PW-LW-36,BH,4):gc.fillRect(LW,y,PW-LW-36,BH);
+      gc.fill();
+      // 데이터 바
+      if(g.cnt>0){
+        gc.fillStyle=g.color; gc.beginPath();
+        gc.roundRect?gc.roundRect(LW,y,bLen,BH,4):gc.fillRect(LW,y,bLen,BH);
+        gc.fill();
+      }
+      // 수치
+      gc.fillStyle='#0F172A'; gc.font='bold 11px monospace';
+      gc.textAlign='left'; gc.textBaseline='middle';
+      gc.fillText(g.cnt>0?g.cnt+'개':'없음',LW+(PW-LW-36)+5,y+BH/2);
+    });
+  }
+
+  // ──────────────────────────────────────────
+  // 5. 최신 동향
+  // ──────────────────────────────────────────
+  const rt=document.getElementById('dash-trends');
+  if(rt) {
+    const sorted=[...TRENDS].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+    rt.innerHTML=sorted.length?sorted.map(t=>`
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="${t.url?`window.open('${t.url}','_blank')`:`gv('trend')`}">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;flex-wrap:wrap;">
+          <span style="font-size:9px;font-weight:800;padding:1px 6px;border-radius:3px;background:${SOL_COLOR[t.solution]}22;color:${SOL_COLOR[t.solution]}">${t.solution}</span>
+          <span style="font-size:9px;color:var(--tx3)">${t.date}</span>
+          ${t.defense==='Y'?'<span style="font-size:9px;background:#ECFDF5;color:#10B981;padding:1px 5px;border-radius:3px;font-weight:700;">방어</span>':t.defense==='risk'?'<span style="font-size:9px;background:#FFF4EF;color:#FF6B35;padding:1px 5px;border-radius:3px;font-weight:700;">주의</span>':''}
+        </div>
+        <div style="font-size:11.5px;font-weight:600;line-height:1.35;">${t.title}</div>
+      </div>`).join('')
+    :'<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">등록된 동향 없음</div>';
+  }
+}
 
 
-# ──────────────────────────────────────────────
-# 유틸 함수
-# ──────────────────────────────────────────────
-
-def make_id(title: str, solution: str) -> str:
-    """중복 수집을 막기 위한 고유 ID 생성"""
-    raw = f"{solution}:{title[:50]}"
-    return "auto_" + hashlib.md5(raw.encode("utf-8")).hexdigest()[:12]
 
 
-def load_existing() -> list:
-    """기존에 저장된 trends.json 불러오기"""
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
 
+// ══════════════════════════════════════════════
+//  RENDER COMPARE
+// ══════════════════════════════════════════════
+function renderCompare() {
+  // 매번 초기화 후 재구성
+  const sel = document.getElementById('cat-sel');
+  if(sel) {
+    sel.innerHTML = '<option value="all">전체 카테고리</option>';
+    CATEGORIES.forEach(c=>{
+      const o=document.createElement('option');
+      o.value=c; o.textContent=c; sel.appendChild(o);
+    });
+  }
+  applyFilter();
+}
 
-def save_results(all_items: list):
-    """결과 저장 (최신순 정렬, 최대 N건 유지)"""
-    os.makedirs("data", exist_ok=True)
-    all_items = sorted(all_items, key=lambda x: x.get("date", ""), reverse=True)
-    all_items = all_items[:MAX_SAVE]
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump(all_items, f, ensure_ascii=False, indent=2)
+function applyFilter() {
+  ST.cat = document.getElementById('cat-sel')?.value||'all';
+  ST.status = document.getElementById('status-sel')?.value||'all';
+  let feats = [...FEATURES];
+  if (ST.cat!=='all') feats=feats.filter(f=>f.cat===ST.cat);
+  if (ST.ass!=='all') feats=feats.filter(f=>f.assignee===ST.ass);
+  if (ST.status==='gap') feats=feats.filter(f=>f.status['카페24']===X&&SOLUTIONS.some(s=>s!=='카페24'&&f.status[s]===O));
+  if (ST.status==='cafe24only') feats=feats.filter(f=>f.status['카페24']===O&&SOLUTIONS.filter(s=>s!=='카페24').every(s=>f.status[s]===X||f.status[s]===Q));
+  if (ST.status==='app') feats=feats.filter(f=>Object.values(f.status).includes(A));
+  if (ST.status==='unknown') feats=feats.filter(f=>Object.values(f.status).includes(Q));
+  document.getElementById('full-tbl').innerHTML = buildTable(feats, false);
+}
 
+function buildTable(feats, compact) {
+  const sols = SOLUTIONS;
+  let h = `<thead><tr>
+    <th style="min-width:170px;">기능명</th>
+    <th style="min-width:100px;">카테고리</th>
+    <th style="min-width:65px;">담당</th>
+    ${sols.map(s=>`<th class="sh ${activeSolCol===s?'sh-active':''}" style="${activeSolCol===s?'background:'+SOL_COLOR[s]+';color:#fff;':''}" onclick="highlightSolCol('${s}')">${s}</th>`).join('')}
+    ${compact?'':`<th style="min-width:120px;">메모</th>`}
+  </tr></thead><tbody>`;
+  const cats = [...new Set(feats.map(f=>f.cat))];
+  cats.forEach(cat=>{
+    const cf = feats.filter(f=>f.cat===cat);
+    h += `<tr class="cat-row"><td colspan="${3+sols.length+(compact?0:1)}">📁 ${cat} <span style="font-weight:400;color:var(--tx3)">(${cf.length}개)</span></td></tr>`;
+    cf.forEach(feat=>{
+      const tagHTML = (feat.tags||[]).map(t=>{
+        if(t==='앱')  return '<span class="ft ft-app">앱/연동</span>';
+        if(t==='AI')  return '<span class="ft ft-ai">AI</span>';
+        if(t==='유료'||t==='프리미엄') return '<span class="ft ft-prem">유료</span>';
+        if(t==='베타') return '<span class="ft ft-beta">베타</span>';
+        return '';
+      }).join('');
+      h += `<tr onclick="openDetail('${feat.id}')" style="cursor:pointer;">
+        <td><div class="fn">${feat.name}${tagHTML}</div></td>
+        <td><span style="font-size:11px;color:var(--tx3);">${feat.cat}</span></td>
+        <td><span style="font-size:11px;">${feat.assignee||'-'}</span></td>
+        ${sols.map(s=>{
+          const sv = feat.status[s];
+          const isActive = activeSolCol===s;
+          let tag = '';
+          if(sv==='O') tag='<span style="display:inline-flex;align-items:center;gap:3px;background:#ECFDF5;color:#059669;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:700;">✓ 지원</span>';
+          else if(sv==='X') tag='<span style="display:inline-flex;align-items:center;gap:3px;background:#F1F5F9;color:#94A3B8;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:600;">✕ 미지원</span>';
+          else if(sv==='P') tag='<span style="display:inline-flex;align-items:center;gap:3px;background:#FEF3C7;color:#D97706;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:700;">△ 부분</span>';
+          else if(sv==='A') tag='<span style="display:inline-flex;align-items:center;gap:3px;background:#E0F7FA;color:#0097A7;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:700;">🔌 앱/연동</span>';
+          else tag='<span style="display:inline-flex;align-items:center;gap:3px;background:#F8FAFC;color:#CBD5E1;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:600;">❓ 미조사</span>';
+          return `<td class="status-cell ${isActive?'col-highlight':''}">${tag}</td>`;
+        }).join('')}
+        ${compact?'':`<td style="font-size:10.5px;color:var(--tx3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${feat.note||''}</td>`}
+      </tr>`;
+    });
+  });
+  h += '</tbody>';
+  return h;
+}
 
-# ──────────────────────────────────────────────
-# 소스 1: 공식 공지 크롤링
-# ──────────────────────────────────────────────
+// ══════════════════════════════════════════════
+//  SOL COLUMN HIGHLIGHT (사이드바 솔루션 클릭)
+// ══════════════════════════════════════════════
+function filterSol(el, sol) {
+  document.querySelectorAll('.sb-sol-item').forEach(e=>e.classList.remove('sol-active'));
+  el.classList.add('sol-active');
+  activeSolCol = sol==='all'?null:sol;
+  ST.sol = sol;
+  gv('compare');
+}
 
-def fetch_cafe24_notice() -> list:
-    """카페24 운영자 공지 + 뉴스룸 수집"""
-    items = []
+function highlightSolCol(sol) {
+  activeSolCol = activeSolCol===sol?null:sol;
+  applyFilter();
+}
 
-    # 운영자 공지
-    try:
-        url  = NOTICE_URLS["카페24_운영자공지"]
-        res  = requests.get(url, headers=HEADERS, timeout=10)
-        res.encoding = res.apparent_encoding
-        soup = BeautifulSoup(res.text, "html.parser")
-        for row in soup.select("table tbody tr")[:15]:
-            a = row.select_one("td.subject a, td.title a, td a")
-            if not a:
-                continue
-            title = a.get_text(strip=True)
-            href  = a.get("href", "")
-            if href and not href.startswith("http"):
-                href = "https://shopnotice.cafe24.com" + href
-            if title:
-                items.append({"title": title, "url": href, "date": TODAY,
-                               "solution": "카페24", "source": "official"})
-    except Exception as e:
-        print(f"    ⚠ 카페24 운영자공지 접속 실패: {e}")
+// ══════════════════════════════════════════════
+//  RENDER TREND
+// ══════════════════════════════════════════════
+let trendSolFilter='all', trendTypeFilter='all', trendSourceFilter='all';
+function renderTrend() {
+  renderTrendList();
+  renderTrendSummary();
+}
+function renderTrendList() {
+  let items = [...TRENDS].sort((a,b)=>b.date.localeCompare(a.date));
+  if (trendSolFilter!=='all') items=items.filter(t=>t.solution===trendSolFilter);
+  if (trendTypeFilter!=='all') items=items.filter(t=>t.type===trendTypeFilter);
+  if (trendSourceFilter!=='all') items=items.filter(t=>(t.source||'internal')===trendSourceFilter);
+  const _tl=document.getElementById('trend-count-label');if(_tl)_tl.textContent=`총 ${items.length}건`;
+  const _b=document.getElementById('trend-cnt-badge');if(_b)_b.textContent=TRENDS.length||'';
+  const el = document.getElementById('trend-list');
+  if (!items.length) {
+    el.innerHTML='<div class="empty"><div class="ei">📭</div><p>등록된 동향이 없습니다<br><span style="font-size:11px;">+ 동향 추가 버튼으로 등록하세요</span></p></div>';
+    return;
+  }
+  el.innerHTML = items.map(t => {
+    const d = new Date(t.date);
+    const srcMap2 = {
+          official: '<span style="font-size:9px;background:#EBF3FF;color:#0F6FFF;padding:1px 6px;border-radius:3px;font-weight:700;">공식공지</span>',
+          news:     '<span style="font-size:9px;background:#EDE7F6;color:#7C3AED;padding:1px 6px;border-radius:3px;font-weight:700;">뉴스</span>',
+          iboss:    '<span style="font-size:9px;background:#EDE7F6;color:#7C3AED;padding:1px 6px;border-radius:3px;font-weight:700;">아이보스</span>',
+          internal: '<span style="font-size:9px;background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:3px;font-weight:700;">내부등록</span>',
+        };
+        const srcBadge = srcMap2[t.source||'internal'] || srcMap2.internal
+    const defBadge = t.defense==='Y'
+      ? '<span style="font-size:9px;background:#ECFDF5;color:#10B981;padding:1px 6px;border-radius:3px;font-weight:700;">✅방어활용</span>'
+      : t.defense==='risk'
+      ? '<span style="font-size:9px;background:#FFF4EF;color:#FF6B35;padding:1px 6px;border-radius:3px;font-weight:700;">⚠주의</span>'
+      : '';
+    const urlLink = t.url
+      ? `<a href="${t.url}" target="_blank" style="font-size:10.5px;color:var(--primary);margin-top:4px;display:inline-block;">🔗 원문 보기</a>`
+      : '';
+    return `<div class="trend-item" onclick="if(this.dataset.url) window.open(this.dataset.url,'_blank')" data-url="${t.url||''}">
+      <div class="t-date"><div class="d">${String(d.getDate()).padStart(2,'0')}</div><div class="m">${d.getMonth()+1}월</div></div>
+      <div class="t-body">
+        <div class="t-top" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+          <span class="t-sol" style="background:${SOL_COLOR[t.solution]}22;color:${SOL_COLOR[t.solution]}">${t.solution}</span>
+          <span class="t-type" style="font-size:10px;color:var(--tx3);">${t.type}</span>
+          ${srcBadge}${defBadge}${t.auto ? '<span style="font-size:9px;background:#EFF6FF;color:#3B82F6;padding:1px 6px;border-radius:3px;font-weight:600;margin-left:2px;">자동수집</span>' : ''}
+          ${t.assignee ? `<span style="font-size:10px;color:var(--tx3);margin-left:auto;">👤${t.assignee}</span>` : ''}
+        </div>
+        <div class="t-ttl">${t.title}</div>
+        <div class="t-cnt">${t.summary || t.content || ""}</div>
+        ${urlLink}
+      </div>
+      <button onclick="deleteTrend('${t.id}')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;align-self:flex-start;padding:2px;">🗑</button>
+    </div>`;
+  }).join('');
+}
+function renderTrendSummary() {
+  const el = document.getElementById('trend-summary');
+  el.innerHTML = SOLUTIONS.map(s=>{
+    const items = TRENDS.filter(t=>t.solution===s).sort((a,b)=>b.date.localeCompare(a.date));
+    const defCount = items.filter(t=>t.defense==='Y').length;
+    const riskCount = items.filter(t=>t.defense==='risk').length;
+    return `<div class="sol-sum-card">
+      <div class="sol-sum-nm"><span style="color:${SOL_COLOR[s]};font-size:13px;">●</span>${s}<span class="tcnt-badge">${items.length}건</span></div>
+      <div class="sol-sum-items">
+        ${items.slice(0,3).map(t=>`<div style="cursor:pointer;padding:2px 0;" onclick="filterTrendSol(document.querySelector('[onclick*=\"filterTrendSol\"][onclick*=\"${s}\"]'),\'${s}\')">· ${t.summary||t.title}</div>`).join('')}
+        ${!items.length?'<div style="color:var(--tx3)">등록된 동향 없음</div>':''}
+        ${defCount?`<div style="color:var(--success);font-size:10.5px;">✅ 방어활용 ${defCount}건</div>`:''}
+        ${riskCount?`<div style="color:var(--warn);font-size:10.5px;">⚠ 주의필요 ${riskCount}건</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function filterTrendSol(el,sol) {
+  document.querySelectorAll('#view-trend .fchip').forEach(c=>{if(c.closest('.filter-bar').children[1]===c||c.textContent==='전체'||SOLUTIONS.some(s=>c.textContent===s))c.classList.remove('active');});
+  el.classList.add('active');
+  trendSolFilter=sol; renderTrendList();
+}
+function filterTrendType(el,type) {
+  el.parentElement.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  trendTypeFilter=type; renderTrendList();
+}
+function filterTrendSource(el,src) {
+  // 소스 필터 chip 리셋
+  ['tsrc-all','tsrc-official','tsrc-news','tsrc-internal'].forEach(id=>{
+    const c=document.getElementById(id);
+    if(c){ c.classList.remove('active'); c.style.background=''; c.style.color=''; }
+  });
+  el.classList.add('active');
+  el.style.background = src==='all'?'var(--primary)':src==='official'?'#EBF3FF':src==='news'?'#EDE7F6':'#FEF3C7';
+  el.style.color = src==='all'?'#fff':src==='official'?'#0F6FFF':src==='news'?'#8B5CF6':'#D97706';
+  trendSourceFilter=src; renderTrendList();
+}
 
-    # 뉴스룸
-    try:
-        url  = NOTICE_URLS["카페24_뉴스룸"]
-        soup = BeautifulSoup(requests.get(url, headers=HEADERS, timeout=10).text, "html.parser")
-        for a in soup.select("article a, .news-item a, h2 a, h3 a")[:5]:
-            title = a.get_text(strip=True)
-            href  = a.get("href", "")
-            if href and not href.startswith("http"):
-                href = "https://news.cafe24.com" + href
-            if title and len(title) > 5:
-                items.append({"title": title, "url": href, "date": TODAY,
-                               "solution": "카페24", "source": "official"})
-    except Exception as e:
-        print(f"    ⚠ 카페24 뉴스룸 접속 실패: {e}")
+// ══════════════════════════════════════════════
+//  RENDER ASSIGNEE
+// ══════════════════════════════════════════════
+// ASSIGNEES: localStorage에서 불러오거나 기본값 사용
+function getAssignees() {
+  const saved = localStorage.getItem('sch-assignees');
+  if (saved) return JSON.parse(saved);
+  return [
+    {name:'서세희', color:'#8B5CF6', role:'팀장', solutions:['카페24','메이크샵','고도몰','아임웹','식스샵','플렉스지','쇼피파이']},
+    {name:'강정원', color:'#F59E0B', role:'파트장', solutions:['카페24','메이크샵']},
+    {name:'김세림', color:'#0F6FFF', role:'', solutions:['고도몰','아임웹']},
+    {name:'박선하', color:'#10B981', role:'', solutions:['식스샵','플렉스지','쇼피파이']},
+  ];
+}
+function saveAssignees(arr) {
+  localStorage.setItem('sch-assignees', JSON.stringify(arr));
+}
+let ASSIGNEES = getAssignees();
+function renderAssignee() { renderMyDash(); }
 
-    return items
+function renderMyDash() {
+  ASSIGNEES = getAssignees();
 
+  // 드롭다운 구성 (최초 1회)
+  const sel = document.getElementById('my-person-sel');
+  if(sel && sel.options.length === 0) {
+    ASSIGNEES.forEach(a=>{
+      const o = document.createElement('option');
+      o.value = a.name; o.textContent = a.name + (a.role?' ('+a.role+')':'');
+      sel.appendChild(o);
+    });
+    // 현재 로그인 사용자와 이름이 일치하면 자동 선택
+    if(currentUser?.name) {
+      const match = [...sel.options].find(o=>o.value===currentUser.name);
+      if(match) sel.value = match.value;
+    }
+  }
 
-def _crawl_notice(sol_name: str, url_key: str, base_url: str,
-                  css_selectors: list) -> list:
-    """
-    공통 공지 크롤러
-    - css_selectors : 시도할 CSS 선택자 목록 (순서대로 시도, 첫 성공 시 중단)
-    """
-    items = []
-    try:
-        url  = NOTICE_URLS[url_key]
-        soup = BeautifulSoup(requests.get(url, headers=HEADERS, timeout=10).text, "html.parser")
-        for sel in css_selectors:
-            rows = soup.select(sel)
-            if not rows:
-                continue
-            for row in rows[:10]:
-                a = row if row.name == "a" else row.select_one("a")
-                if not a:
-                    continue
-                title = a.get_text(strip=True)
-                href  = a.get("href", "")
-                if href and not href.startswith("http"):
-                    href = base_url + href
-                if title and len(title) > 5:
-                    items.append({"title": title, "url": href, "date": TODAY,
-                                  "solution": sol_name, "source": "official"})
-            if items:
-                break
-    except Exception as e:
-        print(f"    ⚠ {sol_name} 공지 접속 실패: {e}")
-    return items
+  const selectedName = sel?.value || ASSIGNEES[0]?.name || '';
+  const me = ASSIGNEES.find(a=>a.name===selectedName);
 
+  // 이름 표시
+  const nameEl = document.getElementById('my-dash-name');
+  if(nameEl) nameEl.textContent = me ? (me.solutions?.join(', ')||'담당 솔루션 미배정') : '';
 
-def fetch_makeshop_notice() -> list:
-    return _crawl_notice(
-        "메이크샵", "메이크샵",
-        "https://www.makeshop.co.kr",
-        [".board-list tbody tr td.title a",
-         ".board-list tbody tr td.subject a",
-         "table tbody tr td a"],
-    )
+  // 내 담당 솔루션 기능만
+  const mySols = me?.solutions || [];
+  const myFeats = FEATURES.filter(f=>f.assignee===selectedName);
 
+  // 요약 통계
+  const done = myFeats.filter(f=>Object.values(f.status).every(v=>v!=='Q')).length;
+  const undone = myFeats.length - done;
+  const pct = myFeats.length ? Math.round(done/myFeats.length*100) : 0;
+  const setEl = (id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setEl('ms-total', myFeats.length);
+  setEl('ms-done', done);
+  setEl('ms-undone', undone);
+  setEl('ms-pct', pct+'%');
+  const prog = document.getElementById('ms-prog');
+  if(prog) prog.style.width = pct+'%';
 
-def fetch_godomall_notice() -> list:
-    return _crawl_notice(
-        "고도몰", "고도몰",
-        "https://www.godomall.com",
-        [".board_list tbody tr td.subject a",
-         "table tbody tr td.title a",
-         "table tbody tr td a"],
-    )
+  // 솔루션별 진행률
+  const solProg = document.getElementById('my-sol-progress');
+  if(solProg) {
+    if(!mySols.length) {
+      solProg.innerHTML='<div style="color:var(--tx3);font-size:12px;padding:8px;">담당 솔루션이 배정되지 않았습니다. 관리자에게 문의하세요.</div>';
+    } else {
+      solProg.innerHTML = mySols.map(s=>{
+        // 해당 솔루션의 미조사 기능 수
+        const total = FEATURES.length;
+        const known = FEATURES.filter(f=>f.status[s]&&f.status[s]!=='Q').length;
+        const spct = Math.round(known/total*100);
+        return `<div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:12.5px;font-weight:700;color:${SOL_COLOR[s]}">${s}</span>
+            <span style="font-size:11.5px;font-family:'JetBrains Mono',monospace;font-weight:700;">${known}/${total} (${spct}%)</span>
+          </div>
+          <div style="height:8px;background:var(--border);border-radius:6px;overflow:hidden;">
+            <div style="height:100%;width:${spct}%;background:${SOL_COLOR[s]};border-radius:6px;transition:width .5s;"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
 
+  // 내가 최근 업데이트한 기능 (localStorage 기반 활동 로그)
+  const myUpdates = (JSON.parse(localStorage.getItem('sch-feat-updates')||'[]'))
+    .filter(u=>u.user===selectedName).slice(0,10);
+  const recentEl = document.getElementById('my-recent-updates');
+  if(recentEl) {
+    recentEl.innerHTML = myUpdates.length ? myUpdates.map(u=>`
+      <div style="padding:9px 16px;border-bottom:1px solid #F1F5F9;cursor:pointer;" onclick="openDetail('${u.featId}')">
+        <div style="font-size:12px;font-weight:600;">${u.featName}</div>
+        <div style="font-size:10.5px;color:var(--tx3);margin-top:2px;">${u.time}</div>
+      </div>`).join('')
+    : '<div style="padding:16px;color:var(--tx3);font-size:12px;">아직 업데이트한 기능이 없습니다</div>';
+  }
 
-def fetch_imweb_notice() -> list:
-    """아임웹 공지 (인코딩 자동 감지)"""
-    items = []
-    try:
-        url = NOTICE_URLS["아임웹"]
-        res = requests.get(url, headers=HEADERS, timeout=10)
-        res.encoding = res.apparent_encoding  # EUC-KR 등 자동 감지
-        soup = BeautifulSoup(res.text, "html.parser")
-        for sel in [".notice-list li a", "a[href*='faq?mode=view']", ".board-list a"]:
-            rows = soup.select(sel)
-            if not rows:
-                continue
-            for row in rows[:10]:
-                a = row if row.name == "a" else row.select_one("a")
-                if not a:
-                    continue
-                title = a.get_text(strip=True)
-                href  = a.get("href", "")
-                if href and not href.startswith("http"):
-                    href = "https://imweb.me" + href
-                if title and len(title) > 5:
-                    items.append({"title": title, "url": href, "date": TODAY,
-                                  "solution": "아임웹", "source": "official"})
-            if items:
-                break
-    except Exception as e:
-        print(f"    ⚠ 아임웹 공지 접속 실패: {e}")
-    return items
+  // 내 솔루션에 새로 추가됐는데 내가 아직 보지 않은 기능
+  const seenFeats = JSON.parse(localStorage.getItem('sch-seen-'+selectedName)||'[]');
+  const newFeats = FEATURES.filter(f=>
+    mySols.some(s=>f.status[s]==='Q') && !seenFeats.includes(f.id) && f.assignee!==selectedName
+  );
+  const newCnt = document.getElementById('new-feat-cnt');
+  if(newCnt) newCnt.textContent = newFeats.length || '';
+  const newEl = document.getElementById('my-new-features');
+  if(newEl) {
+    newEl.innerHTML = newFeats.length ? newFeats.slice(0,15).map(f=>`
+      <div style="padding:9px 16px;border-bottom:1px solid #F1F5F9;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:12px;font-weight:600;">${f.name}</div>
+          <div style="font-size:10.5px;color:var(--tx3);">${f.cat}</div>
+        </div>
+        <button onclick="openFeatModal('${f.id}')" class="btn btn-o btn-sm">입력</button>
+      </div>`).join('')
+    : '<div style="padding:16px;color:var(--tx3);font-size:12px;">신규 미조사 항목 없음</div>';
+  }
 
+  // 미조사 목록 솔루션 필터 셀렉트 구성
+  const selEl = document.getElementById('my-sol-filter'); selEl && (selEl.innerHTML='<option value="all">전체 솔루션</option>');
+  if(selEl && selEl.options.length<=1) {
+    mySols.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;selEl.appendChild(o);});
+  }
 
-def fetch_sixshop_notice() -> list:
-    return _crawl_notice(
-        "식스샵", "식스샵",
-        "https://www.sixshop.com",
-        ["article a", ".post-title a", "h2 a", "h3 a"],
-    )
+  // 미조사 목록
+  renderMyUndoneList(selEl?.value||'all');
+}
 
+function renderMyUndoneList(solFilter) {
+  const sel = document.getElementById('my-person-sel');
+  const selectedName = sel?.value || ASSIGNEES[0]?.name || '';
+  const me = ASSIGNEES.find(a=>a.name===selectedName);
+  const mySols = me?.solutions||[];
+  const el = document.getElementById('my-undone-list');
+  if(!el) return;
 
-def fetch_shopify_changelog() -> list:
-    """쇼피파이 공식 Changelog (RSS 피드 방식)"""
-    items = []
-    try:
-        import feedparser
-        feed = feedparser.parse(NOTICE_URLS["쇼피파이_RSS"])
-        for entry in feed.entries[:10]:
-            date_str = entry.get("published", TODAY)[:10]
-            if date_str < CUTOFF:
-                continue
-            items.append({
-                "title":    entry.get("title", "").strip(),
-                "url":      entry.get("link", ""),
-                "date":     date_str,
-                "solution": "쇼피파이",
-                "source":   "official",
-            })
-    except Exception as e:
-        print(f"    ⚠ 쇼피파이 changelog 접속 실패: {e}")
-    return items
+  let feats = FEATURES.filter(f=>Object.values(f.status).some(v=>v==='Q'));
+  if(solFilter&&solFilter!=='all') feats = feats.filter(f=>f.status[solFilter]==='Q');
+  if(!feats.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px;">미조사 항목 없음 🎉</div>';return;}
 
+  el.innerHTML = feats.map(f=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #F1F5F9;" onclick="openFeatModal('${f.id}')" style="cursor:pointer;">
+      <div style="flex:1;cursor:pointer;">
+        <div style="font-size:12.5px;font-weight:600;">${f.name}</div>
+        <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">
+          ${SOLUTIONS.filter(s=>f.status[s]==='Q').map(s=>
+            `<span style="background:${SOL_COLOR[s]}18;color:${SOL_COLOR[s]};padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;">❓ ${s}</span>`
+          ).join('')}
+        </div>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="event.stopPropagation();openFeatModal('${f.id}')">입력</button>
+    </div>`).join('');
+}
 
-# ──────────────────────────────────────────────
-# 소스 2: 네이버 뉴스 키워드 검색
-# ──────────────────────────────────────────────
+// ══════════════════════════════════════════════
+//  RENDER EDIT
+// ══════════════════════════════════════════════
+function renderEdit() {
+  renderEditFeatList();
+  renderEditTrendList();
+  renderCatList();
+  document.getElementById('feat-cnt').textContent=`(${FEATURES.length}개)`;
+}
+function renderEditFeatList(filter='') {
+  const el = document.getElementById('edit-feat-list');
+  const cats = [...new Set(FEATURES.map(f=>f.cat))];
+  const lf = filter.toLowerCase();
+  let html = '';
+  let hasResult = false;
 
-def fetch_naver_news(sol: dict) -> list:
-    """
-    솔루션별 한글/영문 키워드로 네이버 뉴스 검색
-    → 제목에 키워드가 실제로 포함된 기사만 채택
-    """
-    items    = []
-    all_kws  = sol["keywords_ko"] + sol["keywords_en"]
+  cats.forEach((cat, ci)=>{
+    const items = FEATURES.filter(f=>{
+      if(!lf) return f.cat===cat;
+      return f.cat===cat && (f.name.toLowerCase().includes(lf) || cat.toLowerCase().includes(lf));
+    });
+    if(!items.length) return;
+    hasResult = true;
+    const isOpen = !!lf || ci===0;
+    const uid = 'cat-acc-'+ci;
 
-    for kw in all_kws:
-        try:
-            encoded = requests.utils.quote(kw)
-            url     = (
-                f"https://search.naver.com/search.naver"
-                f"?where=news&query={encoded}&sort=1"
-                f"&ds={CUTOFF}&de={TODAY}"
-            )
-            soup = BeautifulSoup(
-                requests.get(url, headers=HEADERS, timeout=10).text, "html.parser"
-            )
-            for a in soup.select(".news_wrap .news_tit")[:5]:
-                title = a.get_text(strip=True)
-                href  = a.get("href", "")
-                # 제목에 솔루션 키워드가 없으면 제외 (무관한 기사 필터링)
-                if not any(k.lower() in title.lower() for k in all_kws):
-                    continue
-                items.append({
-                    "title":    title,
-                    "url":      href,
-                    "date":     TODAY,
-                    "solution": sol["name"],
-                    "source":   "news",
-                })
-        except Exception as e:
-            print(f"    ⚠ 네이버뉴스 [{kw}] 검색 실패: {e}")
-        time.sleep(0.5)
+    html += `
+      <div style="margin-bottom:3px;">
+        <div onclick="toggleCatAcc('${uid}')"
+          style="display:flex;align-items:center;justify-content:space-between;
+                 padding:6px 10px;border-radius:7px;cursor:pointer;
+                 background:var(--primary-bg);color:var(--primary);
+                 font-size:11px;font-weight:700;user-select:none;border:1px solid rgba(15,111,255,.15);">
+          <span>${cat}</span>
+          <span style="display:flex;align-items:center;gap:5px;">
 
-    return items
+            <span style="font-size:10px;background:var(--primary);color:#fff;border-radius:10px;padding:1px 7px;">${items.length}</span>
+            <span id="arr-${uid}" style="font-size:13px;transition:transform .2s;display:inline-block;transform:${isOpen?'rotate(90deg)':'rotate(0)'};line-height:1;">›</span>
+          </span>
+        </div>
+        <div id="${uid}" style="display:${isOpen?'block':'none'};padding-left:4px;">
+          ${items.map(f=>`
+            <div class="feat-list-item" onclick="loadFeatEdit('${f.id}')"
+              style="padding:5px 8px 5px 14px;border-radius:6px;margin:1px 0;cursor:pointer;
+                     display:flex;align-items:center;justify-content:space-between;transition:.1s;"
+              onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+              <span style="font-size:12px;font-weight:500;">${f.name}</span>
 
+            </div>`).join('')}
+        </div>
+      </div>`;
+  });
 
-# ──────────────────────────────────────────────
-# 소스 3: 아이보스 마케팅 뉴스
-# ──────────────────────────────────────────────
+  el.innerHTML = hasResult ? html : '<div style="padding:20px;text-align:center;color:var(--tx3);">검색 결과 없음</div>';
+}
 
-def fetch_iboss_list() -> list:
-    """
-    아이보스 마케팅 뉴스 목록에서 아이템 수집
-    - [X월 X일 마케팅 뉴스클리핑] 제목 → is_clipping=True 표시 (본문 수집 예정)
-    - 솔루션명 포함 일반 기사 → 제목만 수집
-    """
-    items = []
-    try:
-        soup = BeautifulSoup(
-            requests.get(IBOSS_URL, headers=HEADERS, timeout=15).text, "html.parser"
-        )
-        seen = set()
-        for a in soup.select("a[href*='/ab-']"):
-            title = a.get_text(strip=True)
-            href  = a.get("href", "")
+function toggleCatAcc(uid) {
+  const body = document.getElementById(uid);
+  const arr  = document.getElementById('arr-'+uid);
+  if(!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(arr) arr.style.transform = isOpen ? 'rotate(0)' : 'rotate(90deg)';
+}
+function filterEditList(v) { renderEditFeatList(v); }
+function loadFeatEdit(id) {
+  const f = FEATURES.find(x=>x.id===id);
+  if (!f) return;
+  document.querySelectorAll('.feat-list-item').forEach(el=>el.classList.remove('selected'));
+  document.querySelectorAll(`[onclick="loadFeatEdit('${id}')"]`).forEach(el=>el.classList.add('selected'));
+  openFeatModal(id);
+}
+function renderEditTrendList() {
+  const el = document.getElementById('edit-trend-list');
+  const sorted = [...TRENDS].sort((a,b)=>b.date.localeCompare(a.date));
+  el.innerHTML = sorted.map(t=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 15px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="display:flex;gap:5px;margin-bottom:3px;">
+          <span style="font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:3px;background:${SOL_COLOR[t.solution]}22;color:${SOL_COLOR[t.solution]}">${t.solution}</span>
+          <span style="font-size:10px;color:var(--tx3)">${t.type} · ${t.date}</span>
+        </div>
+        <div style="font-size:13px;font-weight:600;">${t.title}</div>
+        <div style="font-size:11.5px;color:var(--tx2);margin-top:2px;">${t.content.substring(0,80)}...</div>
+      </div>
+      <button onclick="deleteTrend('${t.id}')" class="btn btn-o btn-sm" style="margin-left:10px;flex-shrink:0;">🗑</button>
+    </div>`).join('');
+}
+function renderCatList() {
+  document.getElementById('cat-list').innerHTML = CATEGORIES.map((c,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;">
+      <span style="font-size:12.5px;">${c}</span>
+      <button onclick="removeCat(${i})" style="background:none;border:none;color:var(--tx3);cursor:pointer;">✕</button>
+    </div>`).join('');
+}
+function addCat() {
+  const v=document.getElementById('new-cat').value.trim();
+  if(!v||CATEGORIES.includes(v)) return;
+  CATEGORIES.push(v); saveToStorage(); renderCatList(); document.getElementById('new-cat').value=''; toast('카테고리 추가됨');
+}
+function removeCat(i) {
+  if(!confirm('삭제하시겠습니까?')) return;
+  CATEGORIES.splice(i,1); saveToStorage(); renderCatList();
+}
+function renderAssigneeEditContent() {
+  document.getElementById('assignee-edit-content').innerHTML = `<h3 style="margin-bottom:14px;font-size:14px;">담당자 목록</h3>` +
+  ASSIGNEES.map(a=>`<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+    <div style="width:36px;height:36px;border-radius:50%;background:${a.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;">${a.name[0]}</div>
+    <div>
+      <div style="font-size:13.5px;font-weight:800;">${a.name}</div>
+      <div style="font-size:11.5px;color:var(--tx2);margin-top:2px;">담당: ${a.solutions.join(' · ')}</div>
+    </div>
+  </div>`).join('') +
+  `<div style="color:var(--tx3);font-size:12px;margin-top:10px;">※ 담당자 변경은 관리자에게 문의 (관리자 메뉴 → 사용자 관리)</div>`;
+}
+function switchEditTab(el, id) {
+  document.querySelectorAll('#view-edit .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['et-features','et-trends','et-cats'].forEach(tid=>{
+    const el2=document.getElementById(tid);
+    if(el2) el2.style.display=tid===id?'block':'none';
+  });
+}
 
-            if not title or not href or len(title) < 5 or href in seen:
-                continue
-            seen.add(href)
-            if not href.startswith("http"):
-                href = "https://www.i-boss.co.kr" + href
+// ══════════════════════════════════════════════
+//  SEARCH
+// ══════════════════════════════════════════════
+let srchCatFilter='all';
+function populateCatFilter() {
+  const el = document.getElementById('srch-cat-chips');
+  if(el) el.innerHTML = CATEGORIES.map(c=>`<span class="fchip" onclick="srchFilterCat(this,'${c}')">${c}</span>`).join('');
+}
+function srchFilterCat(el,cat) {
+  document.querySelectorAll('#view-search .fchip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  srchCatFilter=cat;
+  const v=document.getElementById('srch-main').value;
+  if(v) doSearch(v);
+}
+function renderSearchView() { doSearch(document.getElementById('srch-main').value||''); }
 
-            is_clipping = bool(CLIPPING_PATTERN.search(title))
+function doSearch(v) {
+  const el = document.getElementById('srch-results');
+  if (!v || v.trim().length < 1) {
+    el.innerHTML = '<div class="empty"><div class="ei">🔍</div><p>검색어를 입력하세요</p></div>';
+    return;
+  }
+  // 불용어 제거 — 의문형/조사/동사 제거 후 핵심 키워드만 추출
+  const STOPWORDS = ['가능해','있어','있나요','있을까','있어요','알려줘','알려주세요',
+    '어때','어떤가','뭐야','뭐가','알고싶어','싶어','되나요','되나',
+    '할수있어','할수있나','지원해','지원하나','지원하나요','지원되나',
+    '이','가','은','는','을','를','에','의','도','로','으로','와','과',
+    '?','*','·','·','!','~','-'];
+  const cleaned = v.replace(/[?*!~·]/g,'').trim();
+  const terms = cleaned.split(/\s+/)
+    .map(t=>t.trim())
+    .filter(t=>t.length>0 && !STOPWORDS.includes(t.toLowerCase()));
+  if(!terms.length) {
+    el.innerHTML='<div class="empty"><div class="ei">🔍</div><p>검색 가능한 키워드가 없습니다<br><span style="font-size:11px;color:var(--tx3);">예: "상품 일괄 등록", "간편결제"</span></p></div>';
+    return;
+  }
+  function matchFeat(f) {
+    const haystack = [
+      f.name, f.desc||'', f.cat, f.note||'',
+      (f.tags||[]).join(' '), f.assignee||'',
+      ...SOLUTIONS.map(s=>(f.status[s]==='O'||f.status[s]==='A')?s:'')
+    ].join(' ').toLowerCase();
+    return terms.every(t=>haystack.includes(t.toLowerCase()));
+  }
+  let res = FEATURES.filter(f=>(srchCatFilter==='all'||f.cat===srchCatFilter)&&matchFeat(f));
+  if(!res.length){
+    el.innerHTML=`<div class="empty"><div class="ei">😢</div><p>결과 없음<br><span style="font-size:11px;color:var(--tx3);">검색어: [${terms.join(', ')}]</span></p></div>`;
+    return;
+  }
+  const queryDisp = terms.join(' ');
+  el.innerHTML=`<div style="font-size:12px;color:var(--tx3);margin-bottom:10px;">
+    "<b style='color:var(--tx1);'>${queryDisp}</b>" 검색 결과 ${res.length}개
+  </div>`+
+  res.map(f=>`<div class="sr-item" onclick="openDetail('${f.id}')">
+    <div class="sr-top">
+      <div class="sr-fn">${hl(f.name,queryDisp)}</div>
+      <div class="sr-cat">📁 ${f.cat}</div>
+      ${f.assignee?`<div style="margin-left:auto;font-size:11px;color:var(--tx3);">👤${f.assignee}</div>`:''}
+    </div>
+    ${f.desc?`<div style="font-size:11.5px;color:var(--tx2);margin:3px 0;">${hl(f.desc,queryDisp)}</div>`:''}
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+      ${SOLUTIONS.map(s=>{
+        const sv=f.status[s];
+        if(sv==='O') return `<span style="background:#ECFDF5;color:#059669;padding:2px 8px;border-radius:4px;font-size:10.5px;font-weight:700;">✓ ${s}</span>`;
+        if(sv==='A') return `<span style="background:#E0F7FA;color:#0097A7;padding:2px 8px;border-radius:4px;font-size:10.5px;font-weight:700;">앱 ${s}</span>`;
+        if(sv==='P') return `<span style="background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:4px;font-size:10.5px;">△ ${s}</span>`;
+        if(sv==='X') return `<span style="background:#F1F5F9;color:#94A3B8;padding:2px 8px;border-radius:4px;font-size:10.5px;">✕ ${s}</span>`;
+        return `<span style="background:#F8FAFC;color:#CBD5E1;padding:2px 8px;border-radius:4px;font-size:10.5px;">? ${s}</span>`;
+      }).join('')}
+    </div>
+  </div>`).join('');
+}
+function hl(txt,q) {
+  if(!txt||!q) return txt||'';
+  let result = txt;
+  q.split(' ').filter(Boolean).forEach(term=>{
+    try {
+      const re=new RegExp('('+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      result=result.replace(re,'<span class="sh">$1</span>');
+    } catch(e){}
+  });
+  return result;
+}
 
-            # 솔루션 키워드 매칭
-            sol_match = next(
-                (s["name"] for s in SOLUTIONS
-                 if any(k.lower() in title.lower()
-                        for k in s["keywords_ko"] + s["keywords_en"])),
-                None,
-            )
+// ══════════════════════════════════════════════
+//  ADMIN
+// ══════════════════════════════════════════════
+function renderAdmin() {
+  if(currentUser?.role!=='admin'){
+    document.getElementById('view-admin').innerHTML='<div class="empty"><div class="ei">🚫</div><p>관리자만 접근 가능합니다</p></div>';
+    return;
+  }
+  ASSIGNEES = getAssignees();
+  renderAdminOverview();
+  renderAssigneeCards();
+  renderSolAssignGrid();
+  renderAdminUsers();
+}
 
-            # 뉴스클리핑이거나 솔루션명이 포함된 기사만 수집
-            if not is_clipping and not sol_match:
-                continue
+function switchAdminTab(el, id) {
+  document.querySelectorAll('#view-admin .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['at-overview','at-assignee','at-sol-assign','at-users','at-logs'].forEach(tid=>{
+    document.getElementById(tid).style.display = tid===id ? 'block' : 'none';
+  });
+  if(id==='at-assignee') renderAssigneeCards();
+  if(id==='at-sol-assign') renderSolAssignGrid();
+  if(id==='at-users') renderAdminUsers();
+  if(id==='at-logs') renderLoginLogs();
+}
 
-            items.append({
-                "title":       title,
-                "url":         href,
-                "date":        TODAY,
-                "solution":    sol_match or "공통",
-                "source":      "news",
-                "is_clipping": is_clipping,   # 내부 처리용 (저장 전 제거)
-            })
-    except Exception as e:
-        print(f"    ⚠ 아이보스 목록 접속 실패: {e}")
-    return items
+function renderAdminOverview() {
+  // 완료율 바
+  const cb = document.getElementById('admin-complete-bars');
+  if(cb) cb.innerHTML = `<div style="padding:8px 0;">` + ASSIGNEES.map(a=>{
+    const mf=FEATURES.filter(f=>f.assignee===a.name);
+    const done=mf.filter(f=>Object.values(f.status).every(v=>v!=='Q')).length;
+    const pct=mf.length?Math.round(done/mf.length*100):0;
+    return `<div class="complete-bar">
+      <div class="cb-name" style="color:${a.color}">${a.name}</div>
+      <div class="cb-track"><div class="cb-fill" style="width:${pct}%;background:${a.color};"></div></div>
+      <div class="cb-pct" style="color:${a.color}">${pct}%</div>
+    </div>
+    <div style="font-size:10.5px;color:var(--tx3);padding:0 16px 8px;">${done}/${mf.length}개 완료</div>`;
+  }).join('')+`</div>`;
 
+  // 솔루션 완료율
+  const sg = document.getElementById('sol-complete-grid');
+  if(sg) sg.innerHTML = SOLUTIONS.map(s=>{
+    const known=FEATURES.filter(f=>f.status[s]!=='Q').length;
+    const pct=Math.round(known/FEATURES.length*100);
+    return `<div class="cd-item">
+      <div class="cd-sol" style="color:${SOL_COLOR[s]}">${s}</div>
+      <div class="cd-pct">${pct}%</div>
+      <div class="cd-sub">${known}/${FEATURES.length}개 조사완료</div>
+      <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:5px;">
+        <div style="height:100%;width:${pct}%;background:${SOL_COLOR[s]};border-radius:4px;"></div>
+      </div>
+    </div>`;
+  }).join('');
 
-def fetch_iboss_clipping_body(url: str) -> str:
-    """
-    뉴스클리핑 게시글 본문 전체 텍스트 추출
-    (최대 3,000자, 광고/메뉴 제외)
-    """
-    try:
-        soup = BeautifulSoup(
-            requests.get(url, headers=HEADERS, timeout=15).text, "html.parser"
-        )
-        body = (
-            soup.select_one(".ab-content")
-            or soup.select_one(".content-body")
-            or soup.select_one("article .body")
-            or soup.select_one("article")
-            or soup.select_one(".view-content")
-        )
-        if not body:
-            return ""
-        for el in body.select("script, style, .ad, .banner, nav"):
-            el.decompose()
-        return body.get_text(separator="\n", strip=True)[:3000]
-    except Exception as e:
-        print(f"    ⚠ 아이보스 본문 수집 실패: {e}")
-        return ""
+  // 활동 통계
+  const as = document.getElementById('activity-stats');
+  if(as) {
+    const knownFeats=FEATURES.filter(f=>Object.values(f.status).every(v=>v!=='Q')).length;
+    const overallPct=Math.round(knownFeats/FEATURES.length*100);
+    as.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:var(--primary);font-family:'JetBrains Mono',monospace;">${FEATURES.length}</div>
+        <div style="font-size:10.5px;color:var(--tx3);">총 비교 기능</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:var(--success);font-family:'JetBrains Mono',monospace;">${overallPct}%</div>
+        <div style="font-size:10.5px;color:var(--tx3);">전체 조사완료율</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:var(--warn);font-family:'JetBrains Mono',monospace;">${TRENDS.length}</div>
+        <div style="font-size:10.5px;color:var(--tx3);">동향 등록 건수</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;color:var(--tx1);font-family:'JetBrains Mono',monospace;">${LOGS.length}</div>
+        <div style="font-size:10.5px;color:var(--tx3);">총 로그인 기록</div>
+      </div>
+    </div>`;
+  }
+}
 
+function renderAssigneeCards() {
+  const el = document.getElementById('ass-cards');
+  if(!el) return;
+  el.innerHTML = ASSIGNEES.map(a=>{
+    const mf=FEATURES.filter(f=>f.assignee===a.name);
+    const done=mf.filter(f=>Object.values(f.status).every(v=>v!=='Q')).length;
+    const pct=mf.length?Math.round(done/mf.length*100):0;
+    return `<div class="ass-card">
+      <div class="ass-card-top">
+        <div class="acc-av" style="background:${a.color}">${a.name[0]}</div>
+        <div><div class="acc-nm">${a.name}</div>${a.role?`<div class='acc-role'>${a.role}</div>`:''}</div>
+      </div>
+      <div class="acc-sols">${a.solutions.map(s=>`<span class="sc sc-${SOL_CLS[s]}">●${s}</span>`).join('')}</div>
+      <div class="acc-stats">
+        <div class="acc-stat"><div class="n">${mf.length}</div><div class="l">담당기능</div></div>
+        <div class="acc-stat"><div class="n">${done}</div><div class="l">조사완료</div></div>
+        <div class="acc-stat"><div class="n">${pct}%</div><div class="l">완료율</div></div>
+      </div>
+      <div class="prog"><div class="prog-f" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
 
-# ──────────────────────────────────────────────
-# GPT 분석 (gpt-4o-mini)
-# ──────────────────────────────────────────────
+  const pt = document.getElementById('ass-prog-tbl');
+  if(!pt) return;
+  pt.innerHTML = `<thead><tr><th>담당자</th><th>역할</th><th>담당 솔루션</th><th>담당기능</th><th>조사완료</th><th>미조사</th><th>완료율</th></tr></thead><tbody>` +
+  ASSIGNEES.map(a=>{
+    const f=FEATURES.filter(x=>x.assignee===a.name);
+    const done=f.filter(x=>Object.values(x.status).every(v=>v!=='Q')).length;
+    const pct=f.length?Math.round(done/f.length*100):0;
+    return `<tr>
+      <td style="font-weight:800;">${a.name}</td>
+      <td style="font-size:11px;color:var(--tx3);">${a.role}</td>
+      <td>${a.solutions.map(s=>`<span class="sc sc-${SOL_CLS[s]}">${s}</span>`).join(' ')}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-weight:700;">${f.length}</td>
+      <td style="color:var(--success);font-weight:700;">${done}</td>
+      <td style="color:var(--warn);font-weight:700;">${f.length-done}</td>
+      <td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:6px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--primary);border-radius:4px;"></div></div><span style="font-size:11px;font-weight:800;min-width:30px;">${pct}%</span></div></td>
+    </tr>`;
+  }).join('')+`</tbody>`;
+}
 
-def analyze_with_gpt(item: dict) -> dict:
-    """
-    GPT-4o-mini로 요약 + 유형 분류 + 방어 활용 판단
-    API 키 없으면 분류 없이 원문 제목만 저장
-    """
-    if not OPENAI_API_KEY:
-        return {**item, "summary": item["title"],
-                "type": "기타", "defense": "N", "defenseReason": ""}
+function renderSolAssignGrid() {
+  const el = document.getElementById('sol-assign-grid');
+  if(!el) return;
+  el.innerHTML = SOLUTIONS.map(s=>{
+    const cur = ASSIGNEES.filter(a=>a.solutions.includes(s)).map(a=>a.name);
+    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:13px;font-weight:800;color:${SOL_COLOR[s]};margin-bottom:10px;">● ${s}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${ASSIGNEES.map(a=>`
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;">
+            <input type="checkbox" id="sa-${s}-${a.name}" ${cur.includes(a.name)?'checked':''}
+              style="accent-color:var(--primary);width:14px;height:14px;">
+            <span style="font-weight:400;color:var(--tx2);">${a.name}</span>
+          </label>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
 
-    content = (item.get("content") or item["title"])[:1500]
-    prompt  = (
-        f"다음은 이커머스 솔루션({item['solution']}) 관련 공지/뉴스입니다.\n\n"
-        f"제목: {item['title']}\n"
-        f"내용: {content}\n\n"
-        "아래 JSON 형식으로만 답하세요 (마크다운 없이):\n"
-        '{"summary":"한국어 2문장 이내 핵심 요약",'
-        '"type":"기능출시|기능개선|요금변경|서비스종료|파트너십|기타",'
-        '"defense":"Y|risk|N",'
-        '"defenseReason":"판단 근거 한 줄"}\n\n'
-        "판단 기준:\n"
-        "  Y    → 경쟁사 서비스 축소/종료/요금 인상, 카페24 신기능 출시\n"
-        "  risk → 경쟁사 주요 신기능 출시, 요금 인하, 대형 파트너십 체결\n"
-        "  N    → 채용공고, 단순 UI 변경, 행사 안내, 일반 마케팅 뉴스"
-    )
+function saveSolAssign() {
+  SOLUTIONS.forEach(s=>{
+    ASSIGNEES.forEach(a=>{
+      const cb = document.getElementById(`sa-${s}-${a.name}`);
+      if(!cb) return;
+      if(cb.checked && !a.solutions.includes(s)) a.solutions.push(s);
+      if(!cb.checked) a.solutions = a.solutions.filter(x=>x!==s);
+    });
+  });
+  saveAssignees(ASSIGNEES);
+  toast('솔루션 배분 저장됨');
+  renderSolAssignGrid();
+  renderAssigneeCards();
+}
 
-    try:
-        resp   = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
-            temperature=0.3,
-        )
-        raw    = re.sub(r"```json|```", "", resp.choices[0].message.content.strip()).strip()
-        parsed = json.loads(raw)
-        return {
-            **item,
-            "summary":       parsed.get("summary", item["title"]),
-            "type":          parsed.get("type", "기타"),
-            "defense":       parsed.get("defense", "N"),
-            "defenseReason": parsed.get("defenseReason", ""),
-        }
-    except Exception as e:
-        print(f"    ⚠ GPT 분석 실패: {e}")
-        return {**item, "summary": item["title"],
-                "type": "기타", "defense": "N", "defenseReason": ""}
+function renderLoginLogs() {
+  const el = document.getElementById('login-log-list');
+  if(!el) return;
+  const recentLogs = LOGS.slice(0,50);
+  el.innerHTML = recentLogs.length ? recentLogs.map(l=>{
+    const ass = ASSIGNEES.find(a=>a.name===l.name);
+    return `<div class="log-item">
+      <div class="log-av" style="background:${ass?.color||'#64748B'}">${(l.name||'?')[0]}</div>
+      <div class="log-nm">${l.name}</div>
+      <div class="log-act">${l.action||'로그인'} · ${l.id}</div>
+      <div class="log-time">${l.time}</div>
+    </div>`;
+  }).join('') : '<div class="empty" style="padding:20px;"><p>로그인 기록 없음</p></div>';
+}
+function renderAdminUsers() {
+  const ul = document.getElementById('user-list');
+  if(!ul) return;
+  const ROLE_COLOR = {admin:'#FF6B35', editor:'#0F6FFF', viewer:'#64748B'};
+  ul.innerHTML = Object.entries(USERS).map(([id,u])=>`
+    <div class="log-item" style="align-items:center;">
+      <div class="log-av" style="background:${ROLE_COLOR[u.role]||'#64748B'}">${(u.name||id)[0]}</div>
+      <div style="flex:1;">
+        <div class="log-nm">${u.name}</div>
+        <div class="log-act" style="font-size:10.5px;">${id}@in.cd24.kr</div>
+      </div>
+      <select onchange="changeUserRole('${id}',this.value)"
+        style="font-size:11px;border:1px solid var(--border);border-radius:6px;padding:3px 7px;background:var(--bg);cursor:pointer;margin-right:8px;">
+        <option value="admin"  ${u.role==='admin'  ?'selected':''}>관리자</option>
+        <option value="editor" ${u.role==='editor' ?'selected':''}>담당자</option>
+        <option value="viewer" ${(u.role==='viewer'||!u.role)?'selected':''}>일반</option>
+      </select>
+      ${id!=='ecmsshseo'?`<button onclick="deleteUser('${id}')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;">🗑</button>`:'<span style="width:22px;"></span>'}
+    </div>`).join('');
+}
 
+function changeUserRole(id, newRole) {
+  if(!canAdmin()) { toast('관리자만 권한을 변경할 수 있습니다'); return; }
+  if(id==='ecmsshseo') { toast('최고 관리자 권한은 변경 불가합니다'); return; }
+  USERS[id].role = newRole;
+  saveToStorage();
+  renderAdminUsers();
+  toast(USERS[id].name + ' 권한을 "' + ROLE_LABEL[newRole] + '"(으)로 변경했습니다');
+}
+function deleteUser(id) {
+  if(!confirm(`${id} 계정을 삭제하시겠습니까?`)) return;
+  delete USERS[id]; saveToStorage(); renderAdminUsers(); toast('사용자 삭제됨');
+}
 
-# ──────────────────────────────────────────────
-# 메인 실행
-# ──────────────────────────────────────────────
+// ══════════════════════════════════════════════
+//  DETAIL PANEL
+// ══════════════════════════════════════════════
+function openDetail(id) {
+  const f = FEATURES.find(x=>x.id===id);
+  if (!f) return;
+  document.getElementById('dp-name').textContent=f.name;
+  document.getElementById('dp-cat').textContent=f.cat;
+  document.getElementById('dp-desc').textContent=f.desc||'설명 없음';
+  const detailSec=document.getElementById('dp-detail-sec');
+  const detailEl=document.getElementById('dp-detail');
+  if(detailSec&&detailEl){
+    if(f.detail){
+      detailSec.style.display='';
+      detailEl.textContent=f.detail;
+    } else {
+      detailSec.style.display='none';
+    }
+  }
+  document.getElementById('dp-sol-grid').innerHTML=SOLUTIONS.map(s=>{
+    const sv=f.status[s];
+    const sn=f.solNotes&&f.solNotes[s];
+    const sg=f.solGuides&&f.solGuides[s];
+    const label=sv==='O'?'✅ 지원':sv==='X'?'❌ 미지원':sv==='P'?'🔸 부분지원':sv==='A'?'🔌 앱/연동':'❓ 미조사';
+    return `<div class="sol-st-item">
+      <div class="sol-st-nm" style="color:${SOL_COLOR[s]}">${s}</div>
+      <div class="sol-st-val">${label}</div>
+      ${sn?`<div class="sol-st-note" style="margin-top:4px;font-size:10.5px;color:var(--tx2);background:#F8FAFC;border-radius:4px;padding:3px 6px;">${sn}</div>`:''}
+      ${sg?`<a href="${sg}" target="_blank" style="display:inline-flex;margin-top:5px;font-size:10.5px;font-weight:700;color:var(--primary);text-decoration:none;">관련 링크 보기 →</a>`:''}
+    </div>`;
+  }).join('');
+  const metaSection = document.getElementById('dp-meta-section');
+  const metaEl = document.getElementById('dp-meta');
+  if(f.note){
+    metaSection.style.display='';
+    metaEl.innerHTML=`<div style="font-size:12px;color:var(--tx2);line-height:1.6;white-space:pre-wrap;background:#F8FAFC;border-radius:7px;padding:9px 10px;">${f.note}</div>`;
+  } else {
+    metaSection.style.display='none';
+    metaEl.innerHTML='';
+  }
+  // 관련 링크
+  const linkLabels = {jira:'JIRA',wiki:'WIKI',help:'헬프센터',slack:'Slack'};
+  const linkEntries = f.links ? Object.entries(f.links).filter(([k,v])=>v) : [];
+  const linksSection = document.getElementById('dp-links-section');
+  const linksEl = document.getElementById('dp-links');
+  if(linkEntries.length) {
+    linksSection.style.display='block';
+    linksEl.innerHTML = linkEntries.map(([k,v])=>
+      `<a href="${v}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:var(--primary-bg);color:var(--primary);padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:600;margin:3px 3px 0 0;text-decoration:none;">
+        ${linkLabels[k]||k} →
+      </a>`
+    ).join('');
+  } else {
+    linksSection.style.display='none';
+  }
+  const relTrends=TRENDS.filter(t=>t.title.includes(f.name.slice(0,4))||t.content.includes(f.name.slice(0,4)));
+  document.getElementById('dp-trends').innerHTML=relTrends.length?relTrends.slice(0,3).map(t=>`<div style="margin-bottom:5px;">· [${t.solution}] ${t.title}</div>`).join(''):'관련 동향 없음';
+  document.getElementById('dpanel').dataset.id=id;
+  document.getElementById('dpanel').classList.add('open');
+}
+function closeDetail() { document.getElementById('dpanel').classList.remove('open'); }
+function editFromDetail() {
+  const id=document.getElementById('dpanel').dataset.id;
+  closeDetail(); openFeatModal(id);
+}
 
-def main():
-    print(f"\n{'━'*56}")
-    print(f"  📡 솔루션 동향 자동 수집  |  {TODAY}")
-    print(f"  수집 기간: 최근 {COLLECT_DAYS}일 ({CUTOFF} ~ {TODAY})")
-    print(f"{'━'*56}")
+// ══════════════════════════════════════════════
+//  FEATURE MODAL
+// ══════════════════════════════════════════════
+function openFeatModal(id=null) {
+  // 권한 체크
+  if(!canEdit()) { toast('편집 권한이 없습니다'); return; }
 
-    existing     = load_existing()
-    existing_ids = {item.get("id") for item in existing}
-    raw_items    = []
+  curFeatId = id;
+  const f = id ? FEATURES.find(x=>x.id===id) : null;
+  document.getElementById('feat-modal-title').textContent = id ? '기능 수정' : '기능 추가';
+  document.getElementById('edit-id').value = id||'';
+  document.getElementById('fi-name').value  = f?.name||'';
+  document.getElementById('fi-desc').value  = f?.desc||'';
+  document.getElementById('fi-detail').value = f?.detail||'';
+  document.getElementById('fi-note').value  = f?.note||'';
+  // 카테고리 셀렉트
+  const cs = document.getElementById('fi-cat');
+  cs.innerHTML = CATEGORIES.map(c=>`<option value="${c}"${f?.cat===c?' selected':''}>${c}</option>`).join('');
 
-    # ── 소스 1: 공식 공지
-    print("\n[1/3] 공식 공지 수집")
-    fetchers = [
-        ("카페24",   fetch_cafe24_notice),
-        ("메이크샵", fetch_makeshop_notice),
-        ("고도몰",   fetch_godomall_notice),
-        ("아임웹",   fetch_imweb_notice),
-        ("식스샵",   fetch_sixshop_notice),
-        ("쇼피파이", fetch_shopify_changelog),
-    ]
-    for name, fn in fetchers:
-        result = fn()
-        print(f"  ✓ {name:<7}: {len(result)}건")
-        raw_items.extend(result)
-        time.sleep(1)
+  // 태그
+  document.getElementById('tag-app').checked  = (f?.tags||[]).includes('앱');
+  document.getElementById('tag-ai').checked   = (f?.tags||[]).includes('AI');
+  document.getElementById('tag-prem').checked = (f?.tags||[]).includes('유료')||(f?.tags||[]).includes('프리미엄');
+  document.getElementById('tag-beta').checked = (f?.tags||[]).includes('베타');
 
-    # ── 소스 2: 네이버 뉴스
-    print("\n[2/3] 네이버 뉴스 검색")
-    for sol in SOLUTIONS:
-        result = fetch_naver_news(sol)
-        print(f"  ✓ {sol['name']:<7}: {len(result)}건")
-        raw_items.extend(result)
-        time.sleep(0.5)
+  // 관련 링크 초기화
+  ['jira','wiki','help','slack'].forEach(k=>{
+    const cb=document.getElementById('link-'+k);
+    if(cb){ cb.checked=false; toggleLinkInput(k,false); }
+  });
+  if(f?.links) {
+    Object.entries(f.links).forEach(([k,v])=>{
+      const cb=document.getElementById('link-'+k);
+      if(cb&&v){ cb.checked=true; toggleLinkInput(k,true);
+        setTimeout(()=>{const inp=document.getElementById('linkinp-'+k);if(inp)inp.value=v;},30);
+      }
+    });
+  }
 
-    # ── 소스 3: 아이보스 마케팅 뉴스
-    print("\n[3/3] 아이보스 마케팅 뉴스")
-    iboss_list = fetch_iboss_list()
-    clipping_count = sum(1 for i in iboss_list if i.get("is_clipping"))
-    general_count  = len(iboss_list) - clipping_count
-    print(f"  ✓ 뉴스클리핑: {clipping_count}건 (본문 수집), "
-          f"일반 뉴스: {general_count}건 (제목만)")
+  // 솔루션별 지원 현황 + 메모 (새 레이아웃)
+  const wrap = document.getElementById('sol-inputs-wrap');
+  if(wrap) {
+    wrap.innerHTML = SOLUTIONS.map(s=>`
+      <div style="border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:800;color:${SOL_COLOR[s]};min-width:70px;">● ${s}</span>
+          <select id="ss-${s}" class="ss-sel" style="flex:1;">
+            <option value="O" ${f?.status[s]==='O'?'selected':''}>✓ 지원</option>
+            <option value="X" ${(!f||f?.status[s]==='X')?'selected':''}>✕ 미지원</option>
+            <option value="P" ${f?.status[s]==='P'?'selected':''}>△ 부분지원</option>
+            <option value="A" ${f?.status[s]==='A'?'selected':''}>🔌 앱/연동</option>
+            <option value="Q" ${f?.status[s]==='Q'?'selected':''}>❓ 미조사</option>
+          </select>
+        </div>
+        <input class="fi" id="snote-${s}" placeholder="${s} 특이사항 (요금, 조건, 앱링크 등)" 
+          value="${(f?.solNotes&&f.solNotes[s])||''}"
+          style="font-size:11.5px;padding:5px 9px;margin-bottom:6px;">
+        <input class="fi" id="sguide-${s}" placeholder="${s} 관련 URL"
+          value="${(f?.solGuides&&f.solGuides[s])||''}"
+          style="font-size:11.5px;padding:5px 9px;">
+      </div>`).join('');
+  }
 
-    for item in iboss_list:
-        if item.get("is_clipping"):
-            body = fetch_iboss_clipping_body(item["url"])
-            item["content"] = body
-            print(f"    → 본문 {len(body)}자 | {item['title'][:40]}...")
-            time.sleep(1)
-        item.pop("is_clipping", None)  # 내부 플래그 제거 후 저장
+  document.getElementById('delete-feat-btn').style.display = id ? 'inline-flex' : 'none';
+  openModal('feature-modal');
+}
 
-    raw_items.extend(iboss_list)
+function toggleLinkInput(type, checked) {
+  const wrap = document.getElementById('link-inputs');
+  if(!wrap) return;
+  const exist = document.getElementById('linkinp-' + type);
+  if(!checked) {
+    if(exist) exist.remove();
+    return;
+  }
+  if(exist) return;
+  const labels = {jira:'JIRA URL', wiki:'WIKI URL', help:'헬프센터 URL', slack:'Slack URL'};
+  const input = document.createElement('input');
+  input.className = 'fi';
+  input.id = 'linkinp-' + type;
+  input.placeholder = labels[type] || '관련 링크 URL';
+  input.style.fontSize = '11.5px';
+  input.style.padding = '6px 9px';
+  wrap.appendChild(input);
+}
 
-    # ── 중복 제거 + ID 부여
-    new_items = []
-    for item in raw_items:
-        uid = make_id(item["title"], item["solution"])
-        if uid in existing_ids:
-            continue
-        item["id"] = uid
-        existing_ids.add(uid)
-        new_items.append(item)
+function saveFeat() {
+  if(!canEdit()) { toast('편집 권한이 없습니다'); return; }
+  const name = document.getElementById('fi-name').value.trim();
+  const cat  = document.getElementById('fi-cat').value;
+  if(!name||!cat){ toast('기능명과 카테고리는 필수입니다'); return; }
 
-    print(f"\n  신규 항목 {len(new_items)}건 → GPT 분석 시작")
-    print(f"{'─'*56}")
+  const tags=[];
+  if(document.getElementById('tag-app').checked)  tags.push('앱');
+  if(document.getElementById('tag-ai').checked)   tags.push('AI');
+  if(document.getElementById('tag-prem').checked) tags.push('유료');
+  if(document.getElementById('tag-beta').checked) tags.push('베타');
 
-    # ── GPT 분석
-    analyzed = []
-    for i, item in enumerate(new_items, 1):
-        label = f"[{i:3d}/{len(new_items)}]"
-        print(f"  {label} {item['solution']:<7} | {item['title'][:40]}")
-        result = analyze_with_gpt(item)
-        result.pop("content", None)   # 본문은 summary로 대체, 용량 절약
-        analyzed.append(result)
-        time.sleep(0.5)
+  const status={};
+  SOLUTIONS.forEach(s=>{ status[s]=document.getElementById('ss-'+s)?.value||'Q'; });
 
-    # ── 저장
-    save_results(analyzed + existing)
+  // 솔루션별 메모
+  const solNotes={};
+  SOLUTIONS.forEach(s=>{
+    const v=document.getElementById('snote-'+s)?.value.trim();
+    if(v) solNotes[s]=v;
+  });
 
-    print(f"\n{'━'*56}")
-    print(f"  ✅ 수집 완료")
-    print(f"     신규 저장: {len(analyzed)}건")
-    print(f"     기존 유지: {len(existing)}건")
-    print(f"     저장 위치: {DATA_PATH}")
-    print(f"     → GitHub push 하면 사이트에 자동 반영됩니다.")
-    print(f"{'━'*56}\n")
+  // 솔루션별 관련 URL
+  const solGuides={};
+  SOLUTIONS.forEach(s=>{
+    const v=document.getElementById('sguide-'+s)?.value.trim();
+    if(v) solGuides[s]=v;
+  });
 
+  // 관련 링크
+  const links={};
+  ['jira','wiki','help','slack'].forEach(k=>{
+    const cb=document.getElementById('link-'+k);
+    const inp=document.getElementById('linkinp-'+k);
+    if(cb&&cb.checked&&inp&&inp.value.trim()) links[k]=inp.value.trim();
+  });
 
-if __name__ == "__main__":
-    main()
+  const fdata = {
+    name, cat, tags, status, solNotes, solGuides, links,
+    desc:    document.getElementById('fi-desc').value.trim(),
+    detail:  document.getElementById('fi-detail').value.trim(),
+    note:    document.getElementById('fi-note').value.trim(),
+  };
+
+  const eid = document.getElementById('edit-id').value;
+  if(eid) {
+    const idx=FEATURES.findIndex(f=>f.id===eid);
+    if(idx>-1) FEATURES[idx]={...FEATURES[idx],...fdata};
+  } else {
+    FEATURES.push({id:'f'+Date.now(),...fdata});
+  }
+
+  // 활동 로그
+  const updates=JSON.parse(localStorage.getItem('sch-feat-updates')||'[]');
+  updates.unshift({user:currentUser.name,featId:eid||'new',featName:name,time:new Date().toLocaleString('ko-KR')});
+  if(updates.length>100) updates.pop();
+  localStorage.setItem('sch-feat-updates',JSON.stringify(updates));
+
+  saveToStorage();
+  closeModal('feature-modal');
+  toast('기능이 저장되었습니다');
+  renderView(_currentView);
+}
+function deleteCurFeat() {
+  if(!canAdmin()){toast('관리자만 삭제 가능합니다');return;}
+  const id=document.getElementById('edit-id').value;
+  if(!id||!confirm('삭제하시겠습니까?')) return;
+  FEATURES=FEATURES.filter(f=>f.id!==id); saveToStorage(); closeModal('feature-modal'); toast('삭제됨');
+  renderView('compare');
+}
+
+// ══════════════════════════════════════════════
+//  TREND MODAL
+// ══════════════════════════════════════════════
+function saveTrend() {
+  if(!canEdit()){toast('편집 권한이 없습니다');return;}
+  const date=document.getElementById('ti-date').value;
+  const solution=document.getElementById('ti-sol').value;
+  const title=document.getElementById('ti-title').value.trim();
+  if(!date||!solution||!title){toast('❌ 날짜, 솔루션, 제목 필수');return;}
+  TRENDS.push({
+    id:'t'+Date.now(), date, solution,
+    type: document.getElementById('ti-type').value,
+    title, content: document.getElementById('ti-content').value,
+    assignee: document.getElementById('ti-ass').value,
+    defense: document.getElementById('ti-defense').value,
+    source: document.getElementById('ti-source').value,
+    url: document.getElementById('ti-url').value,
+  });
+  saveToStorage(); const _b2=document.getElementById('trend-cnt-badge');if(_b2)_b2.textContent=TRENDS.length||'';
+  closeModal('trend-modal'); toast('동향 저장됨');
+  const cv=document.querySelector('.view.active')?.id?.replace('view-','')||'dashboard';
+  if(cv==='trend'||cv==='dashboard') renderView(cv);
+}
+function deleteTrend(id) {
+  if(!confirm('삭제?')) return;
+  TRENDS=TRENDS.filter(t=>t.id!==id); saveToStorage(); toast('삭제됨');
+  renderView(document.querySelector('.view.active')?.id?.replace('view-','')||'dashboard');
+}
+
+// ══════════════════════════════════════════════
+//  MODALS / UTILS
+// ══════════════════════════════════════════════
+function openModal(id) {
+  if(id==='trend-modal') document.getElementById('ti-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function filterAss(el,name) {
+  document.querySelectorAll('.ass-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); ST.ass=name;
+  const cv=document.querySelector('.view.active')?.id?.replace('view-','')||'dashboard';
+  if(cv==='compare') applyFilter();
+}
+function exportData() {
+  const d={features:FEATURES,trends:TRENDS,categories:CATEGORIES,exportedAt:new Date().toISOString()};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.download=`solution-compare-${new Date().toISOString().split('T')[0]}.json`;
+  a.click(); toast('내보내기 완료');
+}
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.modal-ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+  document.addEventListener('click',e=>{const dp=document.getElementById('dpanel');if(dp&&dp.classList.contains('open')&&!dp.contains(e.target)&&!e.target.closest('.ctbl tr')&&!e.target.closest('.sr-item'))closeDetail();});
+  // 로그인 캐시 확인
+  const cached=localStorage.getItem('_fb_user');
+  if(!cached){const ls=document.getElementById('login-screen');if(ls)ls.style.display='flex';}
+
+  firebase.initializeApp({
+    apiKey:"AIzaSyClykJM1ySRaboArlRaLiEQyvVjYAepS_Q",
+    authDomain:"cafe24-sol-compare.firebaseapp.com",
+    projectId:"cafe24-sol-compare",
+    storageBucket:"cafe24-sol-compare.firebasestorage.app",
+    messagingSenderId:"742500493763",
+    appId:"1:742500493763:web:2456a2827f0c148f9eb576"
+  });
+  const _auth=firebase.auth();
+  const _provider=new firebase.auth.GoogleAuthProvider();
+  _provider.setCustomParameters({hd:'in.cd24.kr'});
+
+  function onLoginSuccess(user){
+    const email=user.email;
+    if(!email.endsWith('@in.cd24.kr')){_auth.signOut();return;}
+    const isAdmin=email==='ecmsshseo@in.cd24.kr';
+    currentUser={id:email.split('@')[0],name:user.displayName||email,role:isAdmin?'admin':'editor'};
+    localStorage.setItem('_fb_user',JSON.stringify({email,name:user.displayName||email}));
+    // 부모 프레임(shell)에 로그인 성공 알림
+    if(window.parent&&window.parent!==window){
+      window.parent.onFrameLogin(currentUser);
+    }
+    addLoginLog(currentUser.id,currentUser.name);
+    saveToStorage();
+    loadFromStorage();initUI();renderTrend();loadAutoTrends();
+  }
+
+  document.getElementById('google-login-btn').addEventListener('click',function(){
+    _auth.signInWithPopup(_provider).then(r=>onLoginSuccess(r.user)).catch(err=>{
+      console.error(err);
+      document.getElementById('login-err').textContent='오류: '+err.code;
+    });
+  });
+
+  _auth.onAuthStateChanged(user=>{
+    if(user&&user.email.endsWith('@in.cd24.kr')){onLoginSuccess(user);}
+    else if(user){_auth.signOut();}
+  });
+
+  window.doLogout=function(){
+    localStorage.removeItem('_fb_user');
+    _auth.signOut().then(()=>{
+      if(window.parent&&window.parent!==window) window.parent.onFrameLogout();
+      else location.reload();
+    });
+  };
+
+});
+</script>
+</body>
+</html>
