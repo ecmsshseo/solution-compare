@@ -170,7 +170,9 @@ def fetch_cafe24_notice() -> list:
     # 운영자 공지
     try:
         url  = NOTICE_URLS["카페24_운영자공지"]
-        soup = BeautifulSoup(requests.get(url, headers=HEADERS, timeout=10).text, "html.parser")
+        res  = requests.get(url, headers=HEADERS, timeout=10)
+        res.encoding = res.apparent_encoding
+        soup = BeautifulSoup(res.text, "html.parser")
         for row in soup.select("table tbody tr")[:15]:
             a = row.select_one("td.subject a, td.title a, td a")
             if not a:
@@ -256,13 +258,33 @@ def fetch_godomall_notice() -> list:
 
 
 def fetch_imweb_notice() -> list:
-    return _crawl_notice(
-        "아임웹", "아임웹",
-        "https://imweb.me",
-        [".notice-list li a",
-         "a[href*='faq?mode=view']",
-         ".board-list a"],
-    )
+    """아임웹 공지 (인코딩 자동 감지)"""
+    items = []
+    try:
+        url = NOTICE_URLS["아임웹"]
+        res = requests.get(url, headers=HEADERS, timeout=10)
+        res.encoding = res.apparent_encoding  # EUC-KR 등 자동 감지
+        soup = BeautifulSoup(res.text, "html.parser")
+        for sel in [".notice-list li a", "a[href*='faq?mode=view']", ".board-list a"]:
+            rows = soup.select(sel)
+            if not rows:
+                continue
+            for row in rows[:10]:
+                a = row if row.name == "a" else row.select_one("a")
+                if not a:
+                    continue
+                title = a.get_text(strip=True)
+                href  = a.get("href", "")
+                if href and not href.startswith("http"):
+                    href = "https://imweb.me" + href
+                if title and len(title) > 5:
+                    items.append({"title": title, "url": href, "date": TODAY,
+                                  "solution": "아임웹", "source": "official"})
+            if items:
+                break
+    except Exception as e:
+        print(f"    ⚠ 아임웹 공지 접속 실패: {e}")
+    return items
 
 
 def fetch_sixshop_notice() -> list:
@@ -383,7 +405,7 @@ def fetch_iboss_list() -> list:
                 "url":         href,
                 "date":        TODAY,
                 "solution":    sol_match or "공통",
-                "source":      "iboss",
+                "source":      "news",
                 "is_clipping": is_clipping,   # 내부 처리용 (저장 전 제거)
             })
     except Exception as e:
