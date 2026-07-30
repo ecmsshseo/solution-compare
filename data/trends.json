@@ -1,5 +1,29 @@
 [
   {
+    "title": "1[7월 31일 마케팅 뉴스클리핑] 구글, 제미나이 스파크 국내 출시 외",
+    "url": "https://www.i-boss.co.kr/ab-2877-17735",
+    "date": "2026-07-31",
+    "solution": "공통",
+    "source": "news",
+    "id": "auto_ea32f00d2b5a",
+    "summary": "구글이 제미나이 스파크를 국내에 출시했다.",
+    "type": "기능출시",
+    "defense": "Y",
+    "defenseReason": "구글의 신기능 출시로 경쟁력이 강화될 가능성이 있음."
+  },
+  {
+    "title": "7[7월 30일 마케팅 뉴스클리핑] 소비심리 회복에 유통 매출 7.3% 증가, 백화점 20.1% 급등 외",
+    "url": "https://www.i-boss.co.kr/ab-2877-17722",
+    "date": "2026-07-31",
+    "solution": "공통",
+    "source": "news",
+    "id": "auto_ae6f9b10501c",
+    "summary": "소비심리가 회복되면서 유통 매출이 7.3% 증가하였고, 백화점 매출은 20.1% 급등하였다.",
+    "type": "기타",
+    "defense": "N",
+    "defenseReason": "일반 마케팅 뉴스로 판단됨"
+  },
+  {
     "title": "1[7월 27일 마케팅 뉴스클리핑] 네이버 광고, 24시간 AI 챗봇 상담 도입 외",
     "url": "https://www.i-boss.co.kr/ab-2877-17687",
     "date": "2026-07-27",
