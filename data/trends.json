@@ -1,5 +1,41 @@
 [
   {
+    "title": "전송자격인증제 SMS이용정책변경 사전안내",
+    "url": "https://www.makeshop.co.kr./notice_view.html?t=notice&uid=20260902115633",
+    "date": "2026-09-03",
+    "solution": "메이크샵",
+    "source": "official",
+    "id": "auto_d5808282d2c1",
+    "summary": "전송자격인증제 SMS 이용 정책이 변경될 예정입니다.",
+    "type": "기타",
+    "defense": "N",
+    "defenseReason": "단순 정책 변경 안내로 경쟁사와의 관련성이 없음."
+  },
+  {
+    "title": "네이버페이 TLS 보안 취약점 조치 완료 안내",
+    "url": "https://www.makeshop.co.kr./notice_view.html?t=notice&uid=20260902182309&select_tab=notice&search_type=¬ice_type=¬ice_category=¬ice_keyword=&page=",
+    "date": "2026-09-03",
+    "solution": "메이크샵",
+    "source": "official",
+    "id": "auto_d171828677c6",
+    "summary": "네이버페이의 TLS 보안 취약점에 대한 조치가 완료되었습니다. 이로 인해 서비스의 보안성이 강화되었습니다.",
+    "type": "기타",
+    "defense": "Y",
+    "defenseReason": "보안 취약점 조치로 인해 서비스 안정성이 향상되어 경쟁력 강화."
+  },
+  {
+    "title": "3[9월 3일 마케팅 뉴스클리핑] 카카오톡 기반 통합 멤버십으로 구독 시장 도전 외",
+    "url": "https://www.i-boss.co.kr/ab-2877-17994",
+    "date": "2026-09-03",
+    "solution": "공통",
+    "source": "news",
+    "id": "auto_0763c67b800a",
+    "summary": "카카오는 카카오톡 기반의 통합 멤버십 서비스를 통해 구독 시장에 도전하고 있다.",
+    "type": "기타",
+    "defense": "N",
+    "defenseReason": "일반 마케팅 뉴스로 판단됨."
+  },
+  {
     "title": "9월 PG사별 부분 무이자 할부 안내",
     "url": "https://www.makeshop.co.kr./notice_view.html?t=notice&uid=20260831185222&select_tab=notice&search_type=¬ice_type=¬ice_category=¬ice_keyword=&page=",
     "date": "2026-09-01",
