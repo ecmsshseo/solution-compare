@@ -1,5 +1,29 @@
 [
   {
+    "title": "상품 목록·기획전 커스텀 위젯 만들기",
+    "url": "https://imweb.me/faq?mode=view&category=28&category2=31&idx=72674",
+    "date": "2026-10-14",
+    "solution": "아임웹",
+    "source": "official",
+    "id": "auto_9de716d7e8a1",
+    "summary": "상품 목록과 기획전을 위한 커스텀 위젯을 만들 수 있는 기능이 출시되었습니다.",
+    "type": "기능출시",
+    "defense": "N",
+    "defenseReason": "단순 기능 출시로 경쟁사에 대한 영향 없음."
+  },
+  {
+    "title": "2[10월 14일 마케팅 뉴스클리핑] 네이버, 스마트스토어 콘텐츠로 발견형 쇼핑 강화 외",
+    "url": "https://www.i-boss.co.kr/ab-2877-18224",
+    "date": "2026-10-14",
+    "solution": "공통",
+    "source": "news",
+    "id": "auto_d55cafcc8b54",
+    "summary": "네이버가 스마트스토어의 콘텐츠 기능을 강화하여 발견형 쇼핑을 촉진하고 있다.",
+    "type": "기능개선",
+    "defense": "N",
+    "defenseReason": "일반 마케팅 뉴스로 판단됨."
+  },
+  {
     "title": "3[10월 12일 마케팅 뉴스클리핑] 네이버, AI 광고문구 도입 재연기 성과 검증 과제 외",
     "url": "https://www.i-boss.co.kr/ab-2877-18209",
     "date": "2026-10-12",
